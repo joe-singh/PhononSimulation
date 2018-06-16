@@ -2,11 +2,12 @@
 
 class Particle:
 
-    def __init__(self, x, y, z, vx, vy, name, type, t=0, event_times=[]):
+    def __init__(self, x, y, z, vx, vy, vz, name, type, t=0, event_times=[]):
         self.x = x
         self.y = y
         self.vx = vx
         self.vy = vy
+        self.vz = vz
         # Tracking times of events, will have the latest time
         self.t = t
         self.event_times = event_times
@@ -32,6 +33,9 @@ class Particle:
     def get_vy(self):
         return self.vy
 
+    def get_vz(self):
+        return self.vz
+
     def get_t(self):
         return self.t
 
@@ -41,11 +45,17 @@ class Particle:
     def set_y(self, y):
         self.y = y
 
+    def set_z(self, z):
+        self.z = z
+
     def set_vx(self, vx):
         self.vx = vx
 
     def set_vy(self, vy):
         self.vy = vy
+
+    def set_vz(self, vz):
+        self.vz = vz
 
     def set_t(self, t):
         self.t = t
