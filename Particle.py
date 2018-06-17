@@ -2,7 +2,7 @@
 
 class Particle:
 
-    def __init__(self, x, y, z, vx, vy, vz, name, type, t=0, event_times=[]):
+    def __init__(self, x, y, z, vx, vy, vz, name, type, frequency, t=0, event_times=[]):
         self.x = x
         self.y = y
         self.vx = vx
@@ -14,6 +14,7 @@ class Particle:
         self.name = name
         self.type = type
         self.z = z
+        self.freq = frequency
 
     def get_name(self):
         return self.name
@@ -39,6 +40,9 @@ class Particle:
     def get_t(self):
         return self.t
 
+    def get_f(self):
+        return self.freq
+
     def set_x(self, x):
         self.x = x
 
@@ -57,8 +61,16 @@ class Particle:
     def set_vz(self, vz):
         self.vz = vz
 
+    def set_velocity(self, vx, vy, vz):
+        self.vx = vx
+        self.vy = vy
+        self.vz = vz
+
     def set_t(self, t):
         self.t = t
+
+    def set_f(self, f):
+        self.freq = f
 
     def get_type(self):
         return self.type
@@ -71,4 +83,4 @@ class Particle:
 
     def get_info(self):
         print(self.name + "at (" + str(self.x) + ", " + str(self.y) + ", " + str(self.z) + ")" \
-              + " with speed: (" + str(self.vx) + ", " + str(self.vy) + ").")
+              + " with speed: (" + str(self.vx) + ", " + str(self.vy) + ") and frequency %f" % self.freq)

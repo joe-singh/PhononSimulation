@@ -1,40 +1,64 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import mpl_toolkits.mplot3d.axes3d
 from Particle import Particle
-import mpl_toolkits.mplot3d.axes3d as p3
 from Box import Box
 import os
 
 # Parameter to set range on random velocity generation
 VELOCITY_MAX = 2000
-# Probability of interaction
-REACTION_PROB = 0.2
+
+# Characteristic Colours to represent different phonon types.
+# ST - Slow Transverse
+# FT - Fast Transverse
+# L - Longitudinal
+
+ST = np.array([0.0,0.0,1.0,1.0])
+FT = np.array([0.0,1.0,0.0,1.0])
+L = np.array([1.0,0.0,0.0,1.0])
+
+# Max characteristic phonon frequency.
+MAX_FREQ = 10e12
 
 # Probability of colour change given reaction
 COLOUR_CHANGE_RATE = 1e-9
 
 # Probability of split given reaction
-SPLIT_RATE = 50
+SPLIT_RATE = 1000
 
 PI = np.pi
 
 colour_dictionary = {
-    1: np.array([0.0,0.0,1.0,1.0]),
-    2: np.array([0.0,1.0,0.0,1.0]),
-    3: np.array([1.0,0.0,0.0,1.0])
+    1: ST,
+    2: FT,
+    3: L
 }
 
 corners = [[0, 0, 0], [0, 1, 0], [1, 0, 0], [1, 1, 0],
            [0, 0, 1], [0, 1, 1], [1, 0, 1], [1, 1, 1]]
 
 
+def get_polar_angle(corner=0):
+    # We need to use random numbers from -1 to 1 to get this angle.
+    # Because the CDF of sin(x) from 0 to pi is F = 1/2(1-cos(x))
+    # so x = arccos(1-2F) where F is from 0 to 1 which means
+    # 1 - 2F is from -1 to 1. The adjustment from 0 to 1 gives
+    # polar angles of 0 to pi/2, needed for the corners.
+    rand = np.random.uniform(-1,1)
+
+    if corner:
+        rand = np.random.uniform(0, 1)
+
+    return np.arccos(rand)
+
+
 def get_magnitude(vx, vy, vz):
     return (vx ** 2 + vy ** 2 + vz ** 2)**.5
 
-
 def get_colour_array(num_array):
     return np.array([colour_dictionary[num] for num in num_array])
+
 
 def beyond_boundary(particle, box):
 
@@ -47,6 +71,7 @@ def beyond_boundary(particle, box):
     depth = box.get_depth()
 
     return x >= width or x <= 0 or y >= height or y <= 0 or z <= 0 or z >= depth
+
 
 def check_no_particle_outside_box(box):
     width = box.get_width()
@@ -69,7 +94,6 @@ def spherical_to_cartesian(r, polar, azimuthal):
     z = r * np.cos(polar)
 
     return x,y,z
-
 
 def get_velocity_angles(vx, vy, vz):
 
@@ -223,6 +247,9 @@ def time_to_boundary(box, particle):
 
     return t_boundary, x_boundary, y_boundary, z_boundary
 
+def phonon_isotope_scatter(particle, box, t):
+    pass
+
 """Simulation step, Delta_t corresponds to the time between snapshots."""
 
 
@@ -244,6 +271,9 @@ def simulate_step(frames, box, points, colours, title):
     x_boundary = boundary_info[1]
     y_boundary = boundary_info[2]
     z_boundary = boundary_info[3]
+
+    # Final positions
+    new_x, new_y, new_z = 0,0,0
 
     smallest_time = min(t_split, t_change_type, t_boundary)
 
@@ -272,12 +302,18 @@ def simulate_step(frames, box, points, colours, title):
         particle.add_event(event_str)
         print(event_str)
 
+
+        # Advance particle for time of process then change its colour.
+        new_z = curr_x + curr_vx * smallest_time
+        new_y = curr_y + curr_vy * smallest_time
+        new_x = curr_z + curr_vz * smallest_time
+
         colour_array = get_colour_array(colours.values())
 
         points._facecolor3d = colour_array
         points._edgecolor3d = colour_array
 
-        title.set_text('Phonon Simulation: time={0:.5f}'.format(particle.get_t(), 4))
+        title.set_text('Phonon Simulation: time={0:.5f}'.format(particle.get_t()))
 
     elif smallest_time == t_split:
         # Advance time
@@ -289,11 +325,16 @@ def simulate_step(frames, box, points, colours, title):
         random_vx = np.random.uniform(-VELOCITY_MAX, VELOCITY_MAX)
         random_vy = np.random.uniform(-VELOCITY_MAX, VELOCITY_MAX)
         random_vz = np.random.uniform(-VELOCITY_MAX, VELOCITY_MAX)
+        random_frequency = np.random.uniform(0, MAX_FREQ)
+        random_type = np.random.randint(1, 4)
 
-        new_type = np.random.randint(1, 4)
+        new_z = curr_x + curr_vx * smallest_time
+        new_y = curr_y + curr_vy * smallest_time
+        new_x = curr_z + curr_vz * smallest_time
+
         new_particle = Particle(curr_x, curr_y, curr_z, random_vx, random_vy, random_vz,
                                 "Particle " + str(box.get_num_particles()),
-                                new_type, t=particle.get_t())
+                                random_type, random_frequency, t=particle.get_t())
         box.add_particle(new_particle)
 
         # Store information of new particle's creation
@@ -319,7 +360,7 @@ def simulate_step(frames, box, points, colours, title):
         print(event_str)
 
         points._offsets3d = data
-        title.set_text('Phonon Simulation: time={0:.5f}'.format(particle.get_t(), 4))
+        title.set_text('Phonon Simulation: time={0:.5f}'.format(particle.get_t()))
 
     else:
         # Otherwise begin propagation. #
@@ -330,9 +371,6 @@ def simulate_step(frames, box, points, colours, title):
         new_x = x_boundary
         new_y = y_boundary
         new_z = z_boundary
-        particle.set_x(new_x)
-        particle.set_y(new_y)
-        particle.set_z((new_z))
 
         # Check if the new position is at the boundary or beyond. If it is change
         # the velocity vector to make it reflect.
@@ -342,103 +380,110 @@ def simulate_step(frames, box, points, colours, title):
             particle.add_event(new_t)
             v_in = get_magnitude(curr_vx, curr_vy, curr_vz)
 
-            # Generate random angle to randomise bounce. Define two angles for convenience relative to normal
-            rand_angle_side = np.random.uniform(-PI / 2, PI / 2)
-            rand_angle_top = np.random.uniform(0, PI)
-
+            # Generate random angle to randomise bounce.
+            rand_polar = get_polar_angle()
             # Define azimuthal angle
             rand_azimuthal = np.random.uniform(0, 2*PI)
+
+            cos_azimuthal_vel = v_in * np.cos(rand_polar) * np.cos(rand_azimuthal)
+            sin_azimuthal_vel = v_in * np.cos(rand_polar) * np.sin(rand_azimuthal)
+            polar_vel = v_in * np.sin(rand_polar)
 
             # Corner cases first: will randomise this properly later because have to
             # include proper angular bounds for angles.
 
-            # TODO: PROPER ANGLES HERE THIS CORNER STUFF IS FAILING.
+            # TODO: RANDOMISE CORNER ANGLES PROPERLY
             coordinate = [particle.get_x(), particle.get_y(), particle.get_z()]
 
             if coordinate in corners:
-                rand_polar = np.random.uniform(0, PI/2)
+                rand_polar = get_polar_angle(1)
                 rand_azimuthal = np.random.uniform(0, PI/2)
+
+                vx = v_in * np.sin(rand_polar) * np.cos(rand_azimuthal)
+                vy = v_in * np.sin(rand_polar) * np.sin(rand_azimuthal)
+                vz = v_in * np.cos(rand_polar)
 
                 print("Corner case")
                 if coordinate == [0,0,0]:
-                    particle.set_vz(v_in * np.cos(rand_polar))
-                    particle.set_vx(v_in * np.sin(rand_polar) * np.cos(rand_azimuthal))
-                    particle.set_vy(v_in * np.sin(rand_polar) * np.sin(rand_azimuthal))
+                    pass
 
                 elif coordinate == [0,0,1]:
-                    particle.set_vz(-v_in * np.cos(rand_polar))
-                    particle.set_vx(v_in * np.sin(rand_polar) * np.cos(rand_azimuthal))
-                    particle.set_vy(v_in * np.sin(rand_polar) * np.sin(rand_azimuthal))
+                    vz = -vz
 
                 elif coordinate == [0,1,0]:
-                    particle.set_vz(v_in * np.cos(rand_polar))
-                    particle.set_vx(v_in * np.sin(rand_polar) * np.cos(rand_azimuthal))
-                    particle.set_vy(-v_in * np.sin(rand_polar) * np.sin(rand_azimuthal))
+                    vy = -vy
 
                 elif coordinate == [1,0,0]:
-                    particle.set_vz(v_in * np.cos(rand_polar))
-                    particle.set_vx(-v_in * np.sin(rand_polar) * np.cos(rand_azimuthal))
-                    particle.set_vy(v_in * np.sin(rand_polar) * np.sin(rand_azimuthal))
+                    vx = -vx
 
                 elif coordinate == [1,1,0]:
-                    particle.set_vz(v_in * np.cos(rand_polar))
-                    particle.set_vx(-v_in * np.sin(rand_polar) * np.cos(rand_azimuthal))
-                    particle.set_vy(-v_in * np.sin(rand_polar) * np.sin(rand_azimuthal))
+                    vx = -vx
+                    vy = -vy
 
                 elif coordinate == [1,0,1]:
-                    particle.set_vz(-v_in * np.cos(rand_polar))
-                    particle.set_vx(-v_in * np.sin(rand_polar) * np.cos(rand_azimuthal))
-                    particle.set_vy(v_in * np.sin(rand_polar) * np.sin(rand_azimuthal))
+                    vx = -vx
+                    vz = -vz
 
                 elif coordinate == [0,1,1]:
-                    particle.set_vz(-v_in * np.cos(rand_polar))
-                    particle.set_vx(v_in * np.sin(rand_polar) * np.cos(rand_azimuthal))
-                    particle.set_vy(-v_in * np.sin(rand_polar) * np.sin(rand_azimuthal))
+                    vy = -vy
+                    vz = -vz
 
                 elif coordinate == [1,1,1]:
-                    particle.set_vz(-v_in * np.cos(rand_polar))
-                    particle.set_vx(-v_in * np.sin(rand_polar) * np.cos(rand_azimuthal))
-                    particle.set_vy(-v_in * np.sin(rand_polar) * np.sin(rand_azimuthal))
+                    vx = -vx
+                    vy = -vy
+                    vz = -vz
 
+                particle.set_velocity(vx, vy, vz)
 
             # Now Faces
 
             # x = 0
             elif particle.get_x() <= 0:
+                particle.set_velocity(polar_vel, cos_azimuthal_vel, sin_azimuthal_vel)
 
-                particle.set_vx(v_in * np.cos(rand_angle_side))
-                particle.set_vy(v_in * np.sin(rand_angle_side) * np.cos(rand_azimuthal))
-                particle.set_vz(v_in * np.sin(rand_angle_side) * np.sin(rand_azimuthal))
+                # particle.set_vx(v_in * np.sin(rand_polar))
+                # particle.set_vy(v_in * np.cos(rand_polar) * np.cos(rand_azimuthal))
+                # particle.set_vz(v_in * np.cos(rand_polar) * np.sin(rand_azimuthal))
 
             # x = width
             elif particle.get_x() >= box.width:
-                particle.set_vx(-v_in * np.cos(rand_angle_side))
-                particle.set_vy(v_in * np.sin(rand_angle_side) * np.cos(rand_azimuthal))
-                particle.set_vz(v_in * np.sin(rand_angle_side) * np.sin(rand_azimuthal))
+                particle.set_velocity(-polar_vel, cos_azimuthal_vel, sin_azimuthal_vel)
+
+                # particle.set_vx(-v_in * np.sin(rand_polar))
+                # particle.set_vy(v_in * np.cos(rand_polar) * np.cos(rand_azimuthal))
+                # particle.set_vz(v_in * np.cos(rand_polar) * np.sin(rand_azimuthal))
 
             # y = 0
             elif particle.get_y() <= 0:
-                particle.set_vy(v_in * np.sin(rand_angle_top))
-                particle.set_vx(v_in * np.cos(rand_angle_top) * np.cos(rand_azimuthal))
-                particle.set_vz(v_in * np.cos(rand_angle_top) * np.sin(rand_azimuthal))
+                particle.set_velocity(cos_azimuthal_vel, polar_vel, sin_azimuthal_vel)
+
+                # particle.set_vy(v_in * np.sin(rand_polar))
+                # particle.set_vx(v_in * np.cos(rand_polar) * np.cos(rand_azimuthal))
+                # particle.set_vz(v_in * np.cos(rand_polar) * np.sin(rand_azimuthal))
 
             # y = height
             elif particle.get_y() >= box.height:
-                particle.set_vy(-v_in * np.sin(rand_angle_top))
-                particle.set_vx(v_in * np.cos(rand_angle_top) * np.cos(rand_azimuthal))
-                particle.set_vz(v_in * np.cos(rand_angle_top) * np.sin(rand_azimuthal))
+                particle.set_velocity(cos_azimuthal_vel, -polar_vel, sin_azimuthal_vel)
+
+                # particle.set_vy(-v_in * np.sin(rand_polar))
+                # particle.set_vx(v_in * np.cos(rand_polar) * np.cos(rand_azimuthal))
+                # particle.set_vz(v_in * np.cos(rand_polar) * np.sin(rand_azimuthal))
 
             # z = 0
             elif particle.get_z() <= 0:
-                particle.set_vz(v_in * np.sin(rand_angle_top))
-                particle.set_vx(v_in * np.cos(rand_angle_top) * np.cos(rand_azimuthal))
-                particle.set_vy(v_in * np.cos(rand_angle_top) * np.sin(rand_azimuthal))
+                particle.set_velocity(cos_azimuthal_vel, sin_azimuthal_vel, polar_vel)
+
+                # particle.set_vz(v_in * np.sin(rand_polar))
+                # particle.set_vx(v_in * np.cos(rand_polar) * np.cos(rand_azimuthal))
+                # particle.set_vy(v_in * np.cos(rand_polar) * np.sin(rand_azimuthal))
 
             # z = depth
             elif particle.get_z() >= box.depth:
-                particle.set_vz(-v_in * np.sin(rand_angle_top))
-                particle.set_vx(v_in * np.cos(rand_angle_top) * np.cos(rand_azimuthal))
-                particle.set_vy(v_in * np.cos(rand_angle_top) * np.sin(rand_azimuthal))
+                particle.set_velocity(cos_azimuthal_vel, sin_azimuthal_vel, -polar_vel)
+
+                # particle.set_vz(-v_in * np.sin(rand_polar))
+                # particle.set_vx(v_in * np.cos(rand_polar) * np.cos(rand_azimuthal))
+                # particle.set_vy(v_in * np.cos(rand_polar) * np.sin(rand_azimuthal))
 
             event_str = particle.get_name() + ": Boundary hit occurred at %s" % particle.get_t() \
                         + " at (" + str(particle.get_x()) + ", " + str(particle.get_y()) + ", " + str(particle.get_z()) \
@@ -446,22 +491,28 @@ def simulate_step(frames, box, points, colours, title):
             particle.add_event(event_str)
 
             print(event_str)
+            title.set_text('Phonon Simulation: Time={0:.5f}'.format(particle.get_t()))
 
-        # If neither of the if cases is activated, the position should just continue straight.
+        # Now with the appropriate position and velocity, just propagate the particle.
 
-        x_points = box.get_x_array()
-        y_points = box.get_y_array()
-        z_points = box.get_z_array()
+    particle.set_x(new_x)
+    particle.set_y(new_y)
+    particle.set_z(new_z)
 
-        # Final check to make sure no particle has jumped outside.
-        if not check_no_particle_outside_box(box):
-            os._exit(1)
-        # data = np.array([[x_points[i], y_points[i], z_points[i]] for i in range(len(x_points))])
-        data = (x_points, y_points, z_points)
-        # points.scatter(x_points, y_points, z_points)
-        points._offsets3d = data
-        title.set_text('Phonon Simulation: Time={0:.5f}'.format(particle.get_t()))
+    x_points = box.get_x_array()
+    y_points = box.get_y_array()
+    z_points = box.get_z_array()
+
+    # Final check to make sure no particle has jumped outside.
+    if not check_no_particle_outside_box(box):
+        os._exit(1)
+
+    data = (x_points, y_points, z_points)
+
+    points._offsets3d = data
+    title.set_text('Phonon Simulation: Time={0:.5f}'.format(particle.get_t()))
     return
+
 
 def run(num_particles, box_width, box_height, box_depth, num_steps):
 
@@ -483,8 +534,10 @@ def run(num_particles, box_width, box_height, box_depth, num_steps):
         random_vy = np.random.uniform(-VELOCITY_MAX, VELOCITY_MAX)
         random_vz = np.random.uniform(-VELOCITY_MAX, VELOCITY_MAX)
 
+        random_freq = np.random.uniform(0, MAX_FREQ)
+
         ptcle = Particle(random_x, random_y, random_z, random_vx, random_vy, random_vz,
-                         "Particle " + str(i), rand_colour)
+                         "Particle " + str(i), rand_colour, random_freq)
         particle_array.append(ptcle)
 
     # Box with initial starting configuration
@@ -508,4 +561,4 @@ def run(num_particles, box_width, box_height, box_depth, num_steps):
     plt.grid()
     plt.show()
 
-run(1, 1, 1, 1, 4000)
+run(2, 1, 1, 1, 4000)
