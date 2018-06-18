@@ -9,6 +9,10 @@ class Box:
         self.particles = particles
         self.colours = colours
         self.depth = depth
+        self.corners = [[0, 0, 0], [0, self.height, 0],
+                        [self.width, 0, 0], [self.width, self.height, 0],
+                        [0, 0, self.depth], [0, self.height, self.depth],
+                        [self.width, 0, self.depth], [self.width, self.height, self.depth]]
 
     def get_particle(self, i):
         try:
@@ -33,6 +37,9 @@ class Box:
 
     def get_z_array(self):
         return np.array([particle.get_z() for particle in self.particles])
+
+    def get_corners(self):
+        return self.corners
 
     def get_num_particles(self):
         return len(self.particles)
