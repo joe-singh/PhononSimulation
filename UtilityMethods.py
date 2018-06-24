@@ -11,11 +11,22 @@ ST = np.array([0.0,0.0,1.0,1.0])
 FT = np.array([0.0,1.0,0.0,1.0])
 L = np.array([1.0,0.0,0.0,1.0])
 
+# Velocities in cm/s for Ge
+V_TRANSVERSE = 3.25
+V_LONGITUDINAL = 5.31
+
+velocity_dictionary = {
+    1: V_TRANSVERSE,
+    2: V_TRANSVERSE,
+    3: V_LONGITUDINAL
+}
+
 colour_dictionary = {
     1: ST,
     2: FT,
     3: L
 }
+
 
 def get_polar_angle(corner=0):
     # We need to use random numbers from -1 to 1 to get this angle.

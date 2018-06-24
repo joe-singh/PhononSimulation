@@ -3,7 +3,6 @@ import numpy as np
 import os
 PI = np.pi
 
-
 def calculate_k_vector(vx, vy, vz, f):
     v = np.array([vx, vy, vz])
     v_mag = np.linalg.norm(v)

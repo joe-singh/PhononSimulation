@@ -35,7 +35,7 @@ def simulate_step(frames, box, points, colours, title):
     curr_t, curr_f = particle.get_t(), particle.get_f()
 
     boundary_info = time_to_boundary(box, particle)
-    anharmonic_rate = get_anharmonic_rate(particle)
+    anharmonic_rate = 1e-10 #get_anharmonic_rate(particle)
     isotopic_rate = isotopic_scatter_rate(particle)
 
     t_isotopic = np.log(1/np.random.random()) / isotopic_rate
@@ -114,6 +114,13 @@ def simulate_step(frames, box, points, colours, title):
     y_points = box.get_y_array()
     z_points = box.get_z_array()
 
+    Delta_V = get_magnitude(particle.get_vx(), particle.get_vy(), particle.get_vz()) \
+              - velocity_dictionary[particle.get_type()]
+
+    if abs(Delta_V) > 1e-6:
+        print("Velocities not being conserved properly! Delta_V: %f" % Delta_V)
+        os._exit(1)
+
     # Final check to make sure no particle has jumped outside.
     if not check_no_particle_outside_box(box):
         os._exit(1)
@@ -133,20 +140,25 @@ def run(num_particles, box_width, box_height, box_depth, num_steps):
     particle_array = []
     colour_dict = {}
 
+    # Generating all initial particles.
     for i in range(num_particles):
         random_x = np.random.uniform(0, box_width)
         random_y = np.random.uniform(0, box_height)
         random_z = np.random.uniform(0, box_depth)
         # Map particle indices to colours
-        rand_colour = np.random.randint(1, 4)
-        colour_dict[i] = rand_colour
+        rand_type = np.random.randint(1, 4)
+        colour_dict[i] = rand_type
 
-        rand_v = np.random.uniform(0, VELOCITY_MAX)
-        random_vx, random_vy, random_vz = create_random_spherical_vel(rand_v)
+        # Ensures that phonons are generated with the appropriate velocity
+        # based on type. This velocity magnitude is fixed but the direction is
+        # randomised.
+        velocity = velocity_dictionary[rand_type]
+
+        random_vx, random_vy, random_vz = create_random_spherical_vel(velocity)
         random_freq = np.random.uniform(0, MAX_FREQ)
 
         ptcle = Particle(random_x, random_y, random_z, random_vx, random_vy, random_vz,
-                         "Particle " + str(i), rand_colour, random_freq)
+                         "Particle " + str(i), rand_type, random_freq)
         particle_array.append(ptcle)
 
     # Box with initial starting configuration
