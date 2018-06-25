@@ -35,8 +35,10 @@ def simulate_step(frames, box, points, colours, title):
     curr_t, curr_f = particle.get_t(), particle.get_f()
 
     boundary_info = time_to_boundary(box, particle)
-    anharmonic_rate = 1e-10 #get_anharmonic_rate(particle)
-    isotopic_rate = isotopic_scatter_rate(particle)
+    anharmonic_rate = 1e5  # get_anharmonic_rate(particle)
+    if not ((colour_dictionary[particle.type] == L).all()):
+        anharmonic_rate = 1e-10
+    isotopic_rate = 1e-10 # isotopic_scatter_rate(particle)
 
     t_isotopic = np.log(1/np.random.random()) / isotopic_rate
     t_split = np.log(1 /np.random.random()) / SPLIT_RATE
@@ -92,7 +94,7 @@ def simulate_step(frames, box, points, colours, title):
 
     elif smallest_time == t_anharmonic:
         print("ANHARMONIC DECAY")
-        anharmonic_decay(particle, box, t_anharmonic, points, colours, title)
+        anharmonic_decay_LLT(particle, box, t_anharmonic, points, colours, title)
 
     else:
         print("BOUNDARY")

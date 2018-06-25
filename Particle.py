@@ -3,7 +3,7 @@ import numpy as np
 import os
 PI = np.pi
 
-def calculate_k_vector(vx, vy, vz, f):
+def calculate_k_vector(vx, vy, vz, w):
     v = np.array([vx, vy, vz])
     v_mag = np.linalg.norm(v)
 
@@ -14,7 +14,6 @@ def calculate_k_vector(vx, vy, vz, f):
         return np.array([0.0, 0.0, 0.0])
 
     v_unit = v / v_mag
-    w = 2 * PI * f
     return (w / v_mag) * v_unit
 
 class Particle:
@@ -33,7 +32,7 @@ class Particle:
         self.z = z
         self.freq = frequency
         self.w = 2 * PI * self.freq
-        self.k = calculate_k_vector(vx, vy, vz, frequency)
+        self.k = calculate_k_vector(vx, vy, vz, self.w)
 
     def get_name(self):
         return self.name
@@ -46,6 +45,9 @@ class Particle:
 
     def get_z(self):
         return self.z
+
+    def get_v(self):
+        return (self.vx ** 2 + self.vy ** 2 + self.vz ** 2) ** .5
 
     def get_vx(self):
         return self.vx
@@ -112,6 +114,9 @@ class Particle:
         self.k[0] = kx
         self.k[1] = ky
         self.k[2] = kz
+
+    def calculate_new_k(self):
+        self.k = calculate_k_vector(self.vx, self.vy, self.vz, self.w)
 
     def set_t(self, t):
         self.t = t
