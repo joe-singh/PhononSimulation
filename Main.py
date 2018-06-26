@@ -10,12 +10,6 @@ VELOCITY_MAX = 10000
 # Max characteristic phonon frequency. Set at 10 THz
 MAX_FREQ = 1e12
 
-# Probability of colour change
-COLOUR_CHANGE_RATE = 1e-10
-
-# Probability of split
-SPLIT_RATE = 100
-
 PI = np.pi
 
 corners = [[0, 0, 0], [0, 1, 0], [1, 0, 0], [1, 1, 0],
@@ -29,76 +23,43 @@ def simulate_step(frames, box, points, colours, title):
 
     particle.get_info()
 
-    # Store current positions
-    curr_x, curr_y, curr_z = particle.get_x(), particle.get_y(), particle.get_z()
-    curr_vx, curr_vy, curr_vz = particle.get_vx(), particle.get_vy(), particle.get_vz()
+    # Store current information
     curr_t, curr_f = particle.get_t(), particle.get_f()
 
     boundary_info = time_to_boundary(box, particle)
-    anharmonic_rate = 1e5  # get_anharmonic_rate(particle)
+    anharmonic_LTT_rate = 1e5
+    anharmonic_LLT_rate = 1e-5 # get_anharmonic_rate(particle)
     if not ((colour_dictionary[particle.type] == L).all()):
-        anharmonic_rate = 1e-10
+        anharmonic_LTT_rate = anharmonic_LLT_rate = 1e-10
     isotopic_rate = 1e-10 # isotopic_scatter_rate(particle)
 
     t_isotopic = np.log(1/np.random.random()) / isotopic_rate
-    t_split = np.log(1 /np.random.random()) / SPLIT_RATE
-    t_change_type = np.log(1 /np.random.random()) / COLOUR_CHANGE_RATE
-    t_anharmonic = np.log(1/np.random.random()) / anharmonic_rate
+    t_anharmonic_LLT = np.log(1/np.random.random()) / anharmonic_LLT_rate
+    t_anharmonic_LTT = np.log(1/np.random.random()) / anharmonic_LTT_rate
 
     t_boundary = boundary_info[0]
     x_boundary = boundary_info[1]
     y_boundary = boundary_info[2]
     z_boundary = boundary_info[3]
 
-    smallest_time = min(t_split, t_change_type, t_boundary, t_isotopic, t_anharmonic)
-    print("t_boundary: %f, t_anharmonic: %f, t_isotopic: %f" % (t_boundary, t_anharmonic, t_isotopic))
+    smallest_time = min(t_boundary, t_isotopic, t_anharmonic_LTT, t_anharmonic_LLT)
+    print("t_boundary: %f, t_anharmonic_LTT: %f, t_anharmonic_LLT: %f, t_isotopic: %f" %
+          (t_boundary, t_anharmonic_LTT, t_anharmonic_LLT, t_isotopic))
 
-    if smallest_time == t_change_type:
-        print("CHANGE_TYPE")
-        # Simulate split this step. Advance time to time of interaction.
-        new_t = curr_t + t_change_type
-        box.update_time(new_t)
-        ptcle_type = particle.get_type()
-
-        # Cyclically change colour: blue->green, green->red, red->blue
-        if ptcle_type == 1:
-            particle.set_type(2)
-            colours[particle_index] = 2
-        elif ptcle_type == 2:
-            particle.set_type(3)
-            colours[particle_index] = 3
-        elif ptcle_type == 3:
-            particle.set_type(1)
-            colours[particle_index] = 1
-
-        event_str = particle.get_name() + ": Interaction Event occurred at %s" % particle.get_t() \
-                    + ". Change from " + str(ptcle_type) + " to " + str(particle.get_type()) \
-                    + " at (" + str(particle.get_x()) + ", " + str(particle.get_y()) + str(particle.get_z()) + ")"
-
-        particle.add_event(event_str)
-        print(event_str)
-
-        # Advance particle for time of process then change its colour.
-        particle.advance(smallest_time)
-
-        colour_array = get_colour_array(colours.values())
-
-        points._facecolor3d = colour_array
-        points._edgecolor3d = colour_array
-
-        title.set_text('Phonon Simulation: time={0:.8f}'.format(particle.get_t()))
-
-    elif smallest_time == t_isotopic:
+    if smallest_time == t_isotopic:
         print("ISOTOPIC")
         phonon_isotope_scatter(particle, t_isotopic, title, box)
 
-    elif smallest_time == t_anharmonic:
-        print("ANHARMONIC DECAY")
-        anharmonic_decay_LLT(particle, box, t_anharmonic, points, colours, title)
+    elif smallest_time == t_anharmonic_LLT:
+        print("ANHARMONIC DECAY LLT")
+        anharmonic_decay_LLT(particle, box, t_anharmonic_LLT, points, colours, title)
 
+    elif smallest_time == t_anharmonic_LTT:
+        print("ANHARMONIC DECAY LTT")
+        anharmonic_decay_LTT(particle, box, t_anharmonic_LTT, points, colours, title)
     else:
         print("BOUNDARY")
-        # Otherwise begin propagation to boundary #
+        # Otherwise begin propagation to boundary
         # Advance time
         new_t = curr_t + smallest_time
         box.update_time(new_t)
@@ -184,9 +145,9 @@ def run(num_particles, box_width, box_height, box_depth, num_steps):
     title = ax.set_title('3D Test')
     ani = animation.FuncAnimation(fig, simulate_step, frames=np.arange(0, num_steps),
                                   fargs=(box, points, colour_dict, title),
-                                  interval=200)
+                                  interval=1000)
 
     plt.grid()
     plt.show()
 
-run(1, 1e-3, 1e-3, 1e-3, 4000)
+run(5, 1e-3, 1e-3, 1e-3, 4000)

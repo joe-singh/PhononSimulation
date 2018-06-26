@@ -1,5 +1,5 @@
 import numpy as np
-
+import re
 
 class Box:
 
@@ -43,6 +43,11 @@ class Box:
 
     def get_num_particles(self):
         return len(self.particles)
+
+    """Assumes that particle is given a name with the number at the end."""
+    def get_particle_no(self, string):
+        m = re.search(r'\d+$', string)
+        return int(m.group()) if m else None
 
     def add_particle(self, particle):
         self.particles.append(particle)

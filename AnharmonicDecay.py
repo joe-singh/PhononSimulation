@@ -3,6 +3,7 @@
 from Particle import Particle
 from Box import Box
 import numpy as np
+from numpy import sin, cos, arccos, arctan2
 from UtilityMethods import *
 
 # TODO: PUT THE SCARY INTEGRAL STUFF IN HERE LATER.
@@ -13,6 +14,70 @@ def get_anharmonic_rate(particle):
         return 0.0
 
     return 1.62e-54 * (particle.get_f() ** 5)
+
+def accept_reject(x_min, x_max, f, rand_max):
+
+    while True:
+        # Draw a random number over the range of possible ratios where the pdf is defined
+        rand_ratio = np.random.uniform(x_min, x_max)
+
+        # Draw a random number of the range 0 to rand_max:
+        rand_draw = np.random.uniform(0, rand_max)
+
+        if rand_draw <= f(rand_ratio):
+            omega_ratio = rand_ratio
+            break
+
+    return omega_ratio
+
+
+def convert_particle_to_global(phi, theta, phi_p, theta_p):
+    phi_global = arccos(-sin(phi) * sin(theta_p) * cos(phi_p) + cos(phi) * cos(theta_p))
+    theta_global = theta - arctan2(-sin(theta_p) * sin(phi_p) * sin(phi) * cos(theta_p) - cos(phi) * cos(phi_p),
+                              1)
+    return phi_global, theta_global
+
+"""Flag meaning if this is for the new particle or not. Flag = 1 means new particles."""
+def anharmonic_final_step(particle, box, t, colours, title, vx, vy, vz, flag=0):
+
+    particle.set_velocity(vx, vy, vz)
+    particle.calculate_new_k()
+
+    if flag:
+        box.add_particle(particle)
+        colours[box.get_num_particles()-1] = particle.get_type()
+    else:
+        colours[box.get_particle_no(particle.get_name())] = particle.get_type()
+
+    propagate(particle, box, t, title)
+    return
+
+
+def update_display(original_particle, new_particle, box, points, title, colours):
+
+    colour_array = get_colour_array(colours.values())
+    points._facecolor3d = colour_array
+    points._edgecolor3d = colour_array
+
+    x_points = box.get_x_array()
+    y_points = box.get_y_array()
+    z_points = box.get_z_array()
+
+    data = (x_points, y_points, z_points)
+
+    event_str = original_particle.get_name() + ": Interaction Event occurred at %s" % new_particle.get_t() \
+                + ".  " + original_particle.get_name() + " splits to produce " + new_particle.get_name() \
+                + " at (" + str(original_particle.get_x()) + ", " + str(original_particle.get_y()) + ", " \
+                + str(original_particle.get_z()) + ") with velocity (" + str(original_particle.get_vx()) + ", " \
+                + str(original_particle.get_vy()) + ", " + str(original_particle.get_vz()) + ")."
+
+    original_particle.add_event(event_str)
+    new_particle.add_event(event_str)
+    print(event_str)
+
+    points._offsets3d = data
+    title.set_text('Phonon Simulation: time={0:.8f}'.format(original_particle.get_t()))
+    return
 
 
 def anharmonic_decay_LLT(particle, box, t, points, colours, title):
@@ -34,6 +99,9 @@ def anharmonic_decay_LLT(particle, box, t, points, colours, title):
 
     w_0 = particle.get_w()
 
+    # Get angles of initial velocity. Need this for coordinate conversion later.
+    theta, phi = get_velocity_angles(particle.get_vx(), particle.get_vy(), particle.get_vz())
+
     # Now need to pull new omega value based on the statistics. From the papers
     # (https://arxiv.org/pdf/1109.1193.pdf and Tamura PRB 48 #13 1993) we know
     # the distribution for w_L'/w_L is given by the following function.
@@ -51,23 +119,11 @@ def anharmonic_decay_LLT(particle, box, t, points, colours, title):
             (1 + x ** 2 - (d ** 2) * (1 - x) ** 2) ** 2
         return y
 
-        # For the accept reject method, we need a good way of identifying a suitable maximum value
-        # that is also economical in terms of computational time. Since for germanium we can plot this
-        # distribution since we know d exactly, we can hardcode an economical maximum value in for now.
-
+    # For the accept reject method, we need a good way of identifying a suitable maximum value
+    # that is also economical in terms of computational time. Since for germanium we can plot this
+    # distribution since we know d exactly, we can hardcode an economical maximum value in for now.
     rand_max = 2.5
-    omega_ratio = 0.0
-
-    while True:
-        # Draw a random number over the range of possible ratios where the pdf is defined
-        rand_ratio = np.random.uniform(x_min, 1)
-
-        # Draw a random number of the range 0 to rand_max:
-        rand_draw = np.random.uniform(0, rand_max)
-
-        if rand_draw <= omega_longitudinal_distribution(rand_ratio):
-            omega_ratio = rand_ratio
-            break
+    omega_ratio = accept_reject(x_min, 1, omega_longitudinal_distribution, rand_max)
 
     # Set new particle omegas.
     w_L = omega_ratio * w_0
@@ -78,129 +134,176 @@ def anharmonic_decay_LLT(particle, box, t, points, colours, title):
 
     # We can also use omega_ratio to get the final angles of the two phonons now
     # from the initial velocity of the incident phonon, which we will use as the z-axis.
-
     x = omega_ratio
 
     theta_L_after = np.arccos((1 + x ** 2 - (d ** 2) * (1 - x) ** 2) / (2 * x))
     theta_T_after = np.arccos((1 - x ** 2 + (d ** 2) * (1 - x) ** 2) / (2 * d * (1 - x)))
 
     phi_L = np.random.uniform(0, 2 * PI)
-    phi_T = np.random.uniform(0, 2 * PI)
 
-    # This final velocity is in terms of the particle's intrinsic coordinate system with z axis aligned
-    # with initial velocity. We need to convert this to the global coordinate system aligned with the
-    # boundaries.
-    v_L_x, v_L_y, v_L_z = spherical_to_cartesian(V_LONGITUDINAL, theta_L_after, phi_L)
-    v_L_x, v_L_y, v_L_z = convert_from_particle_to_global_cartesian(v_L_x, v_L_y, v_L_z)
+    # Convert to spherical coordinates with z axis now pointing up. From https://arxiv.org/pdf/1109.1193.pdf
+    # p 12, eqs 15 & 16.
+    phi_L_original = phi_L
 
-    v_T_x, v_T_y, v_T_z = spherical_to_cartesian(V_TRANSVERSE, theta_T_after, phi_T)
-    v_T_x, v_T_y, v_T_z = convert_from_particle_to_global_cartesian(v_T_x, v_T_y, v_T_z)
+    phi_L, theta_L = convert_particle_to_global(phi, theta, phi_L, theta_L_after)
+    phi_T, theta_T = convert_particle_to_global(phi, theta, 2 * PI - phi_L_original, theta_T_after)
 
-    # Now can set velocity coordinates.
-    particle.set_velocity(v_L_x, v_L_y, v_L_z)
-    transverse_phonon.set_velocity(v_T_x, v_T_y, v_T_z)
+    v_L_x, v_L_y, v_L_z = spherical_to_cartesian(V_LONGITUDINAL, theta_L, phi_L)
+    v_T_x, v_T_y, v_T_z = spherical_to_cartesian(V_TRANSVERSE, theta_T, phi_T)
 
-    # Set new k vectors
-    particle.calculate_new_k()
-    transverse_phonon.calculate_new_k()
+    # Set velocity coordinates and new k vector.
+    anharmonic_final_step(particle, box, t, colours, title, v_L_x, v_L_y, v_L_z)
+    anharmonic_final_step(transverse_phonon, box, t, colours, title, v_T_x, v_T_y, v_T_z, flag=1)
 
-    # Now having done all of this, put the new transverse phonon into the box.
-    box.add_particle(transverse_phonon)
+    # Update display
+    update_display(particle, transverse_phonon, box, points, title, colours)
 
-    # Propagate both particles.
-    propagate(particle, box, t, title)
-    propagate(transverse_phonon, box, t, title)
+    #colour_array = get_colour_array(colours.values())
+    #points._facecolor3d = colour_array
+    #points._edgecolor3d = colour_array
 
-    old_position = np.array([curr_x, curr_y, curr_z])
-    new_position = np.array([particle.get_x(), particle.get_y(), particle.get_z()])
+    #x_points = box.get_x_array()
+    #y_points = box.get_y_array()
+    #z_points = box.get_z_array()
 
-    print("Time: %f" % t)
-    print("Delta = " + str(new_position - old_position))
+    #data = (x_points, y_points, z_points)
 
-    # Update particle creation on display.
-    colours[box.get_num_particles() - 1] = transverse_phonon.get_type()
+    #event_str = particle.get_name() + ": Interaction Event occurred at %s" % particle.get_t() \
+    #            + ".  " + particle.get_name() + " splits to produce " + transverse_phonon.get_name() \
+    #            + " at (" + str(particle.get_x()) + ", " + str(particle.get_y()) + ") with velocity (" \
+    #            + str(particle.get_vx()) + ", " + str(particle.get_vy()) + ")."
 
-    colour_array = get_colour_array(colours.values())
-    points._facecolor3d = colour_array
-    points._edgecolor3d = colour_array
+    #particle.add_event(event_str)
+    #transverse_phonon.add_event(event_str)
+    #print(event_str)
 
-    x_points = box.get_x_array()
-    y_points = box.get_y_array()
-    z_points = box.get_z_array()
-
-    data = (x_points, y_points, z_points)
-
-    event_str = particle.get_name() + ": Interaction Event occurred at %s" % particle.get_t() \
-                + ".  " + particle.get_name() + " splits to produce " + transverse_phonon.get_name() \
-                + " at (" + str(particle.get_x()) + ", " + str(particle.get_y()) + ") with velocity (" \
-                + str(particle.get_vx()) + ", " + str(particle.get_vy()) + ")."
-
-    particle.add_event(event_str)
-    transverse_phonon.add_event(event_str)
-    print(event_str)
-
-    points._offsets3d = data
-    title.set_text('Phonon Simulation: time={0:.8f}'.format(particle.get_t()))
+    #points._offsets3d = data
+    #title.set_text('Phonon Simulation: time={0:.8f}'.format(particle.get_t()))
 
     return
 
 
+def anharmonic_decay_LTT(particle, box, t, points, colours, title):
 
-def anharmonic_decay(particle, box, t, points, colours, title):
-
-    # Firstly advance time
+    # Advance time
     box.update_time(particle.get_t() + t)
 
-    random_type = np.random.randint(1, 4)
+    # Create new particle that will be the transverse phonon. Choose
+    # randomly from ST and FT
+
+    new_phonon_type = np.random.randint(1, 3)
+    old_phonon_new_type = np.random.randint(1, 3)
+
+    # Change the old particle to a transverse phonon type.
+    particle.set_type(old_phonon_new_type)
+
     curr_x, curr_y, curr_z = particle.get_x(), particle.get_y(), particle.get_z()
 
-    # Create new particle with 0 momentum/frequency. We will give it
-    # correct frequency in a bit.
-    new_particle = Particle(curr_x, curr_y, curr_z, 0, 0, 0,
+    # Create new phonon with 0 momentum and frequency traveling in the same direction as the initial.
+    # We will change all these variables below.
+    transverse_phonon = Particle(curr_x, curr_y, curr_z, 0, 0, 0,
                             "Particle " + str(box.get_num_particles()),
-                            random_type, 0, t=particle.get_t())
+                            new_phonon_type, 0, t=particle.get_t())
 
-    # Give new and old particle correct properties. Using old particle
-    # with 0 velocity/wavevector/frequency means this process is effectively
-    # like breaking one particle into two.
-    particle.simulate_momentum_conservation(new_particle)
+    w_0 = particle.get_w()
 
-    # Put new particle in.
-    box.add_particle(new_particle)
+    # Get angles of initial velocity. Need this for coordinate conversion later.
+    theta, phi = get_velocity_angles(particle.get_vx(), particle.get_vy(), particle.get_vz())
 
-    # Propagate both particles.
-    propagate(particle, box, t, title)
-    propagate(new_particle, box, t, title)
+    # Now need to pull new omega value based on the statistics. From the papers
+    # (https://arxiv.org/pdf/1109.1193.pdf and Tamura PRB 48 #13 1993) we know
+    # the distribution for w_L'/w_L is given by the following function.
 
-    old_position = np.array([curr_x, curr_y, curr_z])
-    new_position = np.array([particle.get_x(), particle.get_y(), particle.get_z()])
+    d = V_LONGITUDINAL / V_TRANSVERSE
+    x_1 = (d - 1) / 2.0
+    x_2 = (d + 1) / 2.0
 
-    print("Time: %f" % t)
-    print("Delta = " + str(new_position - old_position))
+    def omega_longitudinal_distribution(x):
 
-    # Update particle creation on display.
-    colours[box.get_num_particles() - 1] = new_particle.get_type()
+        # Make sure within bounds where this is a valid pdf
+        assert x_1 <= x <= x_2
 
-    colour_array = get_colour_array(colours.values())
-    points._facecolor3d = colour_array
-    points._edgecolor3d = colour_array
+        b = -7.32
+        g = -7.08
+        l = 3.76
+        m = 5.61
 
-    x_points = box.get_x_array()
-    y_points = box.get_y_array()
-    z_points = box.get_z_array()
+        A = (1 / 2) * (1 - d ** 2) * (b + l + (1 + d ** 2) * (g + m))
+        B = b + l + 2 * (d ** 2) * (g + m)
+        C = b + l + 2 * (g + m)
+        D = (1 - d ** 2) * (2 * b + 4 * g + l + 3 * m)
 
-    data = (x_points, y_points, z_points)
+        y = (A + B * d * x - B * x ** 2) ** 2 + (C * x * (d - x) - (D / (d - x)) * (x - d - (1 - d ** 2) / (4 * x))) ** 2
+        return y
 
-    event_str = particle.get_name() + ": Interaction Event occurred at %s" % particle.get_t() \
-                + ".  " + particle.get_name() + " splits to produce " + new_particle.get_name() \
-                + " at (" + str(particle.get_x()) + ", " + str(particle.get_y()) + ") with velocity (" \
-                + str(particle.get_vx()) + ", " + str(particle.get_vy()) + ")."
+    # For the accept reject method, we need a good way of identifying a suitable maximum value
+    # that is also economical in terms of computational time. Since for germanium we can plot this
+    # distribution since we know d exactly, we can hardcode an economical maximum value in for now.
 
-    particle.add_event(event_str)
-    new_particle.add_event(event_str)
-    print(event_str)
+    rand_max = 10.0
+    omega_ratio = accept_reject(x_1, x_2, omega_longitudinal_distribution, rand_max)
 
-    points._offsets3d = data
-    title.set_text('Phonon Simulation: time={0:.8f}'.format(particle.get_t()))
+    # Set new particle omegas. Watch out for different definition of x here, its omega_ratio * d
+    w_T1 = omega_ratio * w_0 / d
+    w_T2 = w_0 - w_T1
+
+    particle.set_w(w_T1)
+    transverse_phonon.set_w(w_T2)
+
+    # We can also use omega_ratio to get the final angles of the two phonons now
+    # from the initial velocity of the incident phonon, which we will use as the z-axis.
+
+    x = omega_ratio
+
+    cos_theta_t1 = (1 - d ** 2 + 2 * x * d)/(2 * x)
+
+    # From https://arxiv.org/pdf/1109.1193.pdf
+    # p 12, eqs 15 & 16. Incorrect formulas though, equations 13 and 14
+    # are not strictly within -1 to 1 for the given range. I have recalculated
+    # my own.
+    theta_T1 = arccos(cos_theta_t1)
+    theta_T2 = arccos((1 - x * cos_theta_t1) / (d - x))
+
+    phi_T1 = np.random.uniform(0, 2 * PI)
+
+    phi_T1_original = phi_T1
+
+    # Convert to spherical coordinates with z axis now pointing up. From https://arxiv.org/pdf/1109.1193.pdf
+    # p 12, eqs 15 & 16.
+
+    phi_T1, theta_T1 = convert_particle_to_global(phi, theta, phi_T1, theta_T1)
+    phi_T2, theta_T2 = convert_particle_to_global(phi, theta, 2 * PI - phi_T1_original, theta_T2)
+
+    v_T1_x, v_T1_y, v_T1_z = spherical_to_cartesian(V_TRANSVERSE, theta_T1, phi_T1)
+
+    v_T2_x, v_T2_y, v_T2_z = spherical_to_cartesian(V_TRANSVERSE, theta_T2, phi_T2)
+
+    # Now can set velocity coordinates. Recalculate k vectors also.
+    anharmonic_final_step(particle, box, t, colours, title, v_T1_x, v_T1_y, v_T1_z, flag=0)
+    anharmonic_final_step(transverse_phonon, box, t, colours, title, v_T2_x, v_T2_y, v_T2_z, flag=1)
+
+    update_display(particle, transverse_phonon, box, points, title, colours)
+
+    # colour_array = get_colour_array(colours.values())
+    # points._facecolor3d = colour_array
+    # points._edgecolor3d = colour_array
+
+    # x_points = box.get_x_array()
+    # y_points = box.get_y_array()
+    # z_points = box.get_z_array()
+
+    # data = (x_points, y_points, z_points)
+
+    # event_str = particle.get_name() + ": Interaction Event occurred at %s" % particle.get_t() \
+    #            + ".  " + particle.get_name() + " splits to produce " + transverse_phonon.get_name() \
+    #            + " at (" + str(particle.get_x()) + ", " + str(particle.get_y()) + ") with velocity (" \
+    #            + str(particle.get_vx()) + ", " + str(particle.get_vy()) + ")."
+
+    # particle.add_event(event_str)
+    # transverse_phonon.add_event(event_str)
+    # print(event_str)
+
+    # points._offsets3d = data
+    # title.set_text('Phonon Simulation: time={0:.8f}'.format(particle.get_t()))
 
     return
