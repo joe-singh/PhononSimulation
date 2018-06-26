@@ -1,6 +1,10 @@
 import numpy as np
 import os
+import Material
 PI = np.pi
+
+# Material specific constants from https://arxiv.org/pdf/1109.1193.pdf table 1.
+Germanium = Material.Material("Germanium", 3.67e-41, 6.43e-55, 5310, 3250, -0.732, -0.708, 0.376, 0.561, 5.32, 0.260)
 
 # Characteristic Colours to represent different phonon types.
 # ST - Slow Transverse
@@ -12,14 +16,14 @@ FT = np.array([0.0,1.0,0.0,1.0])
 L = np.array([1.0,0.0,0.0,1.0])
 
 # Velocities in cm/s for Ge
-V_TRANSVERSE = 3.25
-V_LONGITUDINAL = 5.31
+#V_TRANSVERSE = 3.25
+#V_LONGITUDINAL = 5.31
 
-velocity_dictionary = {
-    1: V_TRANSVERSE,
-    2: V_TRANSVERSE,
-    3: V_LONGITUDINAL
-}
+#velocity_dictionary = {
+#    1: V_TRANSVERSE,
+#    2: V_TRANSVERSE,
+#    3: V_LONGITUDINAL
+#}
 
 colour_dictionary = {
     1: ST,

@@ -3,7 +3,8 @@ import re
 
 class Box:
 
-    def __init__(self, height, width, depth, particles=[], colours={}):
+    def __init__(self, material, height, width, depth, particles=[], colours={}):
+        self.material = material
         self.height = height
         self.width = width
         self.particles = particles
@@ -56,3 +57,5 @@ class Box:
         for particle in self.particles:
             particle.set_t(time)
 
+    def get_material(self):
+        return self.material

@@ -1,9 +1,9 @@
 from UtilityMethods import *
 
-def isotopic_scatter_rate(particle):
-    return 3.67e-41 * (particle.get_f() ** 4)
+def isotopic_scatter_rate(box, particle):
+    return box.get_material().get_isotope_scatter_rate() * (particle.get_f() ** 4)
 
-def phonon_isotope_scatter(particle, t, title, box):
+def phonon_isotope_scatter(particle, t, title, box, points):
 
     # advance time:
     particle.set_t(particle.get_t() + t)
@@ -17,6 +17,7 @@ def phonon_isotope_scatter(particle, t, title, box):
     z = particle.get_z()
 
     v_mag = get_magnitude(curr_vx, curr_vy, curr_vz)
+    print("VMAG ISOTOPIC: %f" % v_mag)
     new_vx, new_vy, new_vz = create_random_spherical_vel(v_mag)
     particle.set_velocity(new_vx, new_vy, new_vz)
 
@@ -29,4 +30,14 @@ def phonon_isotope_scatter(particle, t, title, box):
     # After scatter, simulate moving forward. Need to be careful about hitting boundary
 
     propagate(particle, box, t, title)
+
+    x_points = box.get_x_array()
+    y_points = box.get_y_array()
+    z_points = box.get_z_array()
+
+    data = (x_points, y_points, z_points)
+
+    points._offsets3d = data
+    title.set_text('Phonon Simulation: time={0:.8f}'.format(particle.get_t()))
+
     return

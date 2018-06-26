@@ -3,19 +3,15 @@ import matplotlib.animation as animation
 import mpl_toolkits.mplot3d.axes3d
 from AnharmonicDecay import *
 from IsotopicScattering import *
-
-# Parameter to set range on random velocity generation
-VELOCITY_MAX = 10000
+from Box import Box
 
 # Max characteristic phonon frequency. Set at 10 THz
-MAX_FREQ = 1e12
+MAX_FREQ = 5e12
 
 PI = np.pi
 
-corners = [[0, 0, 0], [0, 1, 0], [1, 0, 0], [1, 1, 0],
-           [0, 0, 1], [0, 1, 1], [1, 0, 1], [1, 1, 1]]
-
 def simulate_step(frames, box, points, colours, title):
+
 
     # Pick random particle from box
     particle_index = np.random.randint(0, box.get_num_particles())
@@ -27,11 +23,9 @@ def simulate_step(frames, box, points, colours, title):
     curr_t, curr_f = particle.get_t(), particle.get_f()
 
     boundary_info = time_to_boundary(box, particle)
-    anharmonic_LTT_rate = 1e5
-    anharmonic_LLT_rate = 1e-5 # get_anharmonic_rate(particle)
-    if not ((colour_dictionary[particle.type] == L).all()):
-        anharmonic_LTT_rate = anharmonic_LLT_rate = 1e-10
-    isotopic_rate = 1e-10 # isotopic_scatter_rate(particle)
+    anharmonic_LTT_rate = get_anharmonic_rate(box, particle, 0)
+    anharmonic_LLT_rate = get_anharmonic_rate(box, particle, 1)
+    isotopic_rate = isotopic_scatter_rate(box, particle)
 
     t_isotopic = np.log(1/np.random.random()) / isotopic_rate
     t_anharmonic_LLT = np.log(1/np.random.random()) / anharmonic_LLT_rate
@@ -48,7 +42,7 @@ def simulate_step(frames, box, points, colours, title):
 
     if smallest_time == t_isotopic:
         print("ISOTOPIC")
-        phonon_isotope_scatter(particle, t_isotopic, title, box)
+        phonon_isotope_scatter(particle, t_isotopic, title, box, points)
 
     elif smallest_time == t_anharmonic_LLT:
         print("ANHARMONIC DECAY LLT")
@@ -78,7 +72,7 @@ def simulate_step(frames, box, points, colours, title):
     z_points = box.get_z_array()
 
     Delta_V = get_magnitude(particle.get_vx(), particle.get_vy(), particle.get_vz()) \
-              - velocity_dictionary[particle.get_type()]
+              - box.get_material().get_particle_velocity(particle.get_type())
 
     if abs(Delta_V) > 1e-6:
         print("Velocities not being conserved properly! Delta_V: %f" % Delta_V)
@@ -103,6 +97,8 @@ def run(num_particles, box_width, box_height, box_depth, num_steps):
     particle_array = []
     colour_dict = {}
 
+    material = Germanium
+
     # Generating all initial particles.
     for i in range(num_particles):
         random_x = np.random.uniform(0, box_width)
@@ -115,17 +111,17 @@ def run(num_particles, box_width, box_height, box_depth, num_steps):
         # Ensures that phonons are generated with the appropriate velocity
         # based on type. This velocity magnitude is fixed but the direction is
         # randomised.
-        velocity = velocity_dictionary[rand_type]
+        velocity = material.get_particle_velocity(rand_type)
 
         random_vx, random_vy, random_vz = create_random_spherical_vel(velocity)
-        random_freq = np.random.uniform(0, MAX_FREQ)
+        random_freq = np.random.uniform(MAX_FREQ/2.0, 3 * MAX_FREQ/2.0)
 
         ptcle = Particle(random_x, random_y, random_z, random_vx, random_vy, random_vz,
                          "Particle " + str(i), rand_type, random_freq)
         particle_array.append(ptcle)
 
-    # Box with initial starting configuration
-    box = Box(box_width, box_height, box_depth, particle_array, colour_dict)
+    # Box with initial starting configuration. Material parameters defined in UtilityMethods.py
+    box = Box(material, box_width, box_height, box_depth, particle_array, colour_dict)
 
     points = ax.scatter(box.get_x_array(), box.get_y_array(), box.get_z_array(),
                         facecolors=get_colour_array(colour_dict.values()))
@@ -145,9 +141,9 @@ def run(num_particles, box_width, box_height, box_depth, num_steps):
     title = ax.set_title('3D Test')
     ani = animation.FuncAnimation(fig, simulate_step, frames=np.arange(0, num_steps),
                                   fargs=(box, points, colour_dict, title),
-                                  interval=1000)
+                                  interval=500)
 
     plt.grid()
     plt.show()
 
-run(5, 1e-3, 1e-3, 1e-3, 4000)
+run(10, 1e-7, 1e-7, 1e-7, 4000)

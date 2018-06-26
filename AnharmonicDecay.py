@@ -1,19 +1,26 @@
 """File containing methods to simulate anharmonic decay."""
 
 from Particle import Particle
-from Box import Box
-import numpy as np
 from numpy import sin, cos, arccos, arctan2
 from UtilityMethods import *
 
-# TODO: PUT THE SCARY INTEGRAL STUFF IN HERE LATER.
-def get_anharmonic_rate(particle):
+"""Process controls whether we calculate rate for LTT or LLT. 1 = LLT, 0 = LTT"""
+def get_anharmonic_rate(box, particle, LLT):
 
-    # Make the anharmonic rate 0 if this is not a longitudinal phonon
+    # TODO: MAKE MATERIAL CLASS THAT STORES ALL MATERIAL SPECIFIC CONSTANTS. 
+    # Make the anharmonic rate basically 0 if this is not a longitudinal phonon
     if particle.get_type() != 3:
-        return 0.0
+        return 1e-69
 
-    return 1.62e-54 * (particle.get_f() ** 5)
+    material = box.get_material()
+    f = particle.get_f()
+
+    if LLT:
+        return material.get_LLT_rate() * (f ** 5)
+
+    return material.get_LTT_rate() * (f ** 5)
+
+
 
 def accept_reject(x_min, x_max, f, rand_max):
 
@@ -32,18 +39,19 @@ def accept_reject(x_min, x_max, f, rand_max):
 
 
 def convert_particle_to_global(phi, theta, phi_p, theta_p):
+
     phi_global = arccos(-sin(phi) * sin(theta_p) * cos(phi_p) + cos(phi) * cos(theta_p))
-    theta_global = theta - arctan2(-sin(theta_p) * sin(phi_p) * sin(phi) * cos(theta_p) - cos(phi) * cos(phi_p),
-                              1)
+    theta_global = theta - arctan2(-sin(theta_p) * sin(phi_p) * sin(phi) * cos(theta_p) - cos(phi) * cos(phi_p), 1)
+
     return phi_global, theta_global
 
-"""Flag meaning if this is for the new particle or not. Flag = 1 means new particles."""
-def anharmonic_final_step(particle, box, t, colours, title, vx, vy, vz, flag=0):
+
+def anharmonic_final_step(particle, box, t, colours, title, vx, vy, vz, new_particle=0):
 
     particle.set_velocity(vx, vy, vz)
     particle.calculate_new_k()
 
-    if flag:
+    if new_particle:
         box.add_particle(particle)
         colours[box.get_num_particles()-1] = particle.get_type()
     else:
@@ -81,6 +89,10 @@ def update_display(original_particle, new_particle, box, points, title, colours)
 
 
 def anharmonic_decay_LLT(particle, box, t, points, colours, title):
+
+    material = box.get_material()
+    V_TRANSVERSE = material.get_transverse_vel()
+    V_LONGITUDINAL = material.get_longitudinal_vel()
 
     # Advance time
     box.update_time(particle.get_t() + t)
@@ -153,37 +165,18 @@ def anharmonic_decay_LLT(particle, box, t, points, colours, title):
 
     # Set velocity coordinates and new k vector.
     anharmonic_final_step(particle, box, t, colours, title, v_L_x, v_L_y, v_L_z)
-    anharmonic_final_step(transverse_phonon, box, t, colours, title, v_T_x, v_T_y, v_T_z, flag=1)
+    anharmonic_final_step(transverse_phonon, box, t, colours, title, v_T_x, v_T_y, v_T_z, new_particle=1)
 
     # Update display
     update_display(particle, transverse_phonon, box, points, title, colours)
-
-    #colour_array = get_colour_array(colours.values())
-    #points._facecolor3d = colour_array
-    #points._edgecolor3d = colour_array
-
-    #x_points = box.get_x_array()
-    #y_points = box.get_y_array()
-    #z_points = box.get_z_array()
-
-    #data = (x_points, y_points, z_points)
-
-    #event_str = particle.get_name() + ": Interaction Event occurred at %s" % particle.get_t() \
-    #            + ".  " + particle.get_name() + " splits to produce " + transverse_phonon.get_name() \
-    #            + " at (" + str(particle.get_x()) + ", " + str(particle.get_y()) + ") with velocity (" \
-    #            + str(particle.get_vx()) + ", " + str(particle.get_vy()) + ")."
-
-    #particle.add_event(event_str)
-    #transverse_phonon.add_event(event_str)
-    #print(event_str)
-
-    #points._offsets3d = data
-    #title.set_text('Phonon Simulation: time={0:.8f}'.format(particle.get_t()))
-
     return
 
 
 def anharmonic_decay_LTT(particle, box, t, points, colours, title):
+
+    material = box.get_material()
+    V_TRANSVERSE = material.get_transverse_vel()
+    V_LONGITUDINAL = material.get_longitudinal_vel()
 
     # Advance time
     box.update_time(particle.get_t() + t)
@@ -202,8 +195,8 @@ def anharmonic_decay_LTT(particle, box, t, points, colours, title):
     # Create new phonon with 0 momentum and frequency traveling in the same direction as the initial.
     # We will change all these variables below.
     transverse_phonon = Particle(curr_x, curr_y, curr_z, 0, 0, 0,
-                            "Particle " + str(box.get_num_particles()),
-                            new_phonon_type, 0, t=particle.get_t())
+                                 "Particle " + str(box.get_num_particles()),
+                                 new_phonon_type, 0, t=particle.get_t())
 
     w_0 = particle.get_w()
 
@@ -222,11 +215,14 @@ def anharmonic_decay_LTT(particle, box, t, points, colours, title):
 
         # Make sure within bounds where this is a valid pdf
         assert x_1 <= x <= x_2
+        material = box.get_material()
 
-        b = -7.32
-        g = -7.08
-        l = 3.76
-        m = 5.61
+        # Material specific decay constants.
+
+        b = material.get_beta()
+        g = material.get_gamma()
+        l = material.get_lambda()
+        m = material.get_mu()
 
         A = (1 / 2) * (1 - d ** 2) * (b + l + (1 + d ** 2) * (g + m))
         B = b + l + 2 * (d ** 2) * (g + m)
@@ -260,12 +256,11 @@ def anharmonic_decay_LTT(particle, box, t, points, colours, title):
     # From https://arxiv.org/pdf/1109.1193.pdf
     # p 12, eqs 15 & 16. Incorrect formulas though, equations 13 and 14
     # are not strictly within -1 to 1 for the given range. I have recalculated
-    # my own.
+    # my own from 4-momentum conservation.
     theta_T1 = arccos(cos_theta_t1)
     theta_T2 = arccos((1 - x * cos_theta_t1) / (d - x))
 
     phi_T1 = np.random.uniform(0, 2 * PI)
-
     phi_T1_original = phi_T1
 
     # Convert to spherical coordinates with z axis now pointing up. From https://arxiv.org/pdf/1109.1193.pdf
@@ -275,35 +270,11 @@ def anharmonic_decay_LTT(particle, box, t, points, colours, title):
     phi_T2, theta_T2 = convert_particle_to_global(phi, theta, 2 * PI - phi_T1_original, theta_T2)
 
     v_T1_x, v_T1_y, v_T1_z = spherical_to_cartesian(V_TRANSVERSE, theta_T1, phi_T1)
-
     v_T2_x, v_T2_y, v_T2_z = spherical_to_cartesian(V_TRANSVERSE, theta_T2, phi_T2)
 
     # Now can set velocity coordinates. Recalculate k vectors also.
-    anharmonic_final_step(particle, box, t, colours, title, v_T1_x, v_T1_y, v_T1_z, flag=0)
-    anharmonic_final_step(transverse_phonon, box, t, colours, title, v_T2_x, v_T2_y, v_T2_z, flag=1)
+    anharmonic_final_step(particle, box, t, colours, title, v_T1_x, v_T1_y, v_T1_z)
+    anharmonic_final_step(transverse_phonon, box, t, colours, title, v_T2_x, v_T2_y, v_T2_z, new_particle=1)
 
     update_display(particle, transverse_phonon, box, points, title, colours)
-
-    # colour_array = get_colour_array(colours.values())
-    # points._facecolor3d = colour_array
-    # points._edgecolor3d = colour_array
-
-    # x_points = box.get_x_array()
-    # y_points = box.get_y_array()
-    # z_points = box.get_z_array()
-
-    # data = (x_points, y_points, z_points)
-
-    # event_str = particle.get_name() + ": Interaction Event occurred at %s" % particle.get_t() \
-    #            + ".  " + particle.get_name() + " splits to produce " + transverse_phonon.get_name() \
-    #            + " at (" + str(particle.get_x()) + ", " + str(particle.get_y()) + ") with velocity (" \
-    #            + str(particle.get_vx()) + ", " + str(particle.get_vy()) + ")."
-
-    # particle.add_event(event_str)
-    # transverse_phonon.add_event(event_str)
-    # print(event_str)
-
-    # points._offsets3d = data
-    # title.set_text('Phonon Simulation: time={0:.8f}'.format(particle.get_t()))
-
     return
