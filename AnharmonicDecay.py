@@ -1,4 +1,8 @@
-"""File containing methods to simulate anharmonic decay."""
+"""
+Anharmonic decay class. Includes L->L+T and L->T+T decays. 
+ 
+Author: Jyotirmai (Joe) Singh
+"""
 
 from Particle import Particle
 from numpy import sin, cos, arccos, arctan2
@@ -6,8 +10,18 @@ from UtilityMethods import *
 
 """Process controls whether we calculate rate for LTT or LLT. 1 = LLT, 0 = LTT"""
 def get_anharmonic_rate(box, particle, LLT):
-
-    # TODO: MAKE MATERIAL CLASS THAT STORES ALL MATERIAL SPECIFIC CONSTANTS. 
+    """
+    Calculates the anharmonic decay rate associated with this 
+    phonon. 
+    
+    :param box: The box in which the phonon is.  
+    :param particle: The phonon under consideration. 
+    :param LLT: Parameter controlling whether the rate calculated is for
+                L->L+T or L->T+T interactions. If LLT != 0, then the rate is
+                for the LLT reaction, otherwise for the LTT reaction. 
+    :return: The anharmonic rate for the appropriate action chosen by the LLT parameter. 
+             Automatically 0 if this is not a longitudinal phonon. 
+    """
     # Make the anharmonic rate basically 0 if this is not a longitudinal phonon
     if particle.get_type() != 3:
         return 1e-69
@@ -21,8 +35,19 @@ def get_anharmonic_rate(box, particle, LLT):
     return material.get_LTT_rate() * (f ** 5)
 
 
-
 def accept_reject(x_min, x_max, f, rand_max):
+    """
+    Accept-Reject algorithm to simulate drawing from a 
+    distribution f which is a pdf in the range x_min and x_max. 
+    
+    :param x_min: The lower bound of the pdf's support.  
+    :param x_max: The upper bound of the pdf's support. 
+    :param f: The pdf to be drawn from. 
+    :param rand_max: The maximum ceiling for the guesses, must 
+                     be larger than the max of f over the range 
+                     defined by x_min and x_max. 
+    :return: the value drawn from distribution. 
+    """
 
     while True:
         # Draw a random number over the range of possible ratios where the pdf is defined
@@ -39,6 +64,19 @@ def accept_reject(x_min, x_max, f, rand_max):
 
 
 def convert_particle_to_global(phi, theta, phi_p, theta_p):
+    """
+    Method to convert spherical coordinates from a particle's frame of 
+    reference (polar axis being the particle's velocity) to the lab 
+    frame (polar axis being z-axis). 
+    
+    :param phi: The polar angle of the particle frame polar axis, relative
+                to the global coordinates. 
+    :param theta: The azimuthal angle of the particle frame polar axis, relative
+                  to the global coordinates. 
+    :param phi_p: The particle frame phi to be converted.
+    :param theta_p: The particle frame theta to be converted. 
+    :return: The converted phi, and converted theta. 
+    """
 
     phi_global = arccos(-sin(phi) * sin(theta_p) * cos(phi_p) + cos(phi) * cos(theta_p))
     theta_global = theta - arctan2(-sin(theta_p) * sin(phi_p) * sin(phi) * cos(theta_p) - cos(phi) * cos(phi_p), 1)
@@ -46,8 +84,21 @@ def convert_particle_to_global(phi, theta, phi_p, theta_p):
     return phi_global, theta_global
 
 
-def anharmonic_final_step(particle, box, t, colours, title, vx, vy, vz, new_particle=0):
-
+def anharmonic_final_step(particle, box, t, colours, vx, vy, vz, new_particle=0):
+    """
+    Utility method to update relevant quantities once all anharmonic processes
+    have been carried out.
+    
+    :param particle: Phonon to be updated. 
+    :param box: Box of phonon. 
+    :param t: Time for which phonon should propagate after anharmonically decaying. 
+    :param colours: The current colour configuration of the phonons. 
+    :param vx: x velocity
+    :param vy: y velocity
+    :param vz: z velocity
+    :param new_particle: Flag checking if we are updating an old particle or creating a
+                         new one.
+    """
     particle.set_velocity(vx, vy, vz)
     particle.calculate_new_k()
 
@@ -57,11 +108,21 @@ def anharmonic_final_step(particle, box, t, colours, title, vx, vy, vz, new_part
     else:
         colours[box.get_particle_no(particle.get_name())] = particle.get_type()
 
-    propagate(particle, box, t, title)
+    propagate(particle, box, t)
     return
 
 
-def update_display(original_particle, new_particle, box, points, title, colours):
+def update_display(original_particle, new_particle, box, points, colours):
+    """
+    Utility method to update the animation. 
+    
+    :param original_particle: The original particle which underwent the anharmonic
+                              decay.
+    :param new_particle: The new particle created by the decay. 
+    :param box: The box in which we are simulating. 
+    :param points: The phonon location information for the matplotlib animation. 
+    :param colours: The current colour configuration of the phonons. 
+    """
 
     colour_array = get_colour_array(colours.values())
     points._facecolor3d = colour_array
@@ -84,11 +145,19 @@ def update_display(original_particle, new_particle, box, points, title, colours)
     print(event_str)
 
     points._offsets3d = data
-    title.set_text('Phonon Simulation: time={0:.8f}'.format(original_particle.get_t()))
     return
 
 
-def anharmonic_decay_LLT(particle, box, t, points, colours, title):
+def anharmonic_decay_LLT(particle, box, t, points, colours):
+    """
+    Method to simulate anharmonic decay for the L->L+T mode. 
+    
+    :param particle: Phonon undergoing decay. 
+    :param box: Phonon box. 
+    :param t: Time over which decay + propagation occurs. 
+    :param points: The phonon location information for the matplotlib animation. 
+    :param colours: The current colour configuration of the phonons. 
+    """
 
     material = box.get_material()
     V_TRANSVERSE = material.get_transverse_vel()
@@ -164,15 +233,24 @@ def anharmonic_decay_LLT(particle, box, t, points, colours, title):
     v_T_x, v_T_y, v_T_z = spherical_to_cartesian(V_TRANSVERSE, theta_T, phi_T)
 
     # Set velocity coordinates and new k vector.
-    anharmonic_final_step(particle, box, t, colours, title, v_L_x, v_L_y, v_L_z)
-    anharmonic_final_step(transverse_phonon, box, t, colours, title, v_T_x, v_T_y, v_T_z, new_particle=1)
+    anharmonic_final_step(particle, box, t, colours, v_L_x, v_L_y, v_L_z)
+    anharmonic_final_step(transverse_phonon, box, t, colours, v_T_x, v_T_y, v_T_z, new_particle=1)
 
     # Update display
-    update_display(particle, transverse_phonon, box, points, title, colours)
+    update_display(particle, transverse_phonon, box, points, colours)
     return
 
 
-def anharmonic_decay_LTT(particle, box, t, points, colours, title):
+def anharmonic_decay_LTT(particle, box, t, points, colours):
+    """
+    Method to simulate anharmonic decay for the L->T+T mode. 
+
+    :param particle: Phonon undergoing decay. 
+    :param box: Phonon box. 
+    :param t: Time over which decay + propagation occurs. 
+    :param points: The phonon location information for the matplotlib animation. 
+    :param colours: The current colour configuration of the phonons. 
+    """
 
     material = box.get_material()
     V_TRANSVERSE = material.get_transverse_vel()
@@ -215,7 +293,6 @@ def anharmonic_decay_LTT(particle, box, t, points, colours, title):
 
         # Make sure within bounds where this is a valid pdf
         assert x_1 <= x <= x_2
-        material = box.get_material()
 
         # Material specific decay constants.
 
@@ -273,8 +350,8 @@ def anharmonic_decay_LTT(particle, box, t, points, colours, title):
     v_T2_x, v_T2_y, v_T2_z = spherical_to_cartesian(V_TRANSVERSE, theta_T2, phi_T2)
 
     # Now can set velocity coordinates. Recalculate k vectors also.
-    anharmonic_final_step(particle, box, t, colours, title, v_T1_x, v_T1_y, v_T1_z)
-    anharmonic_final_step(transverse_phonon, box, t, colours, title, v_T2_x, v_T2_y, v_T2_z, new_particle=1)
+    anharmonic_final_step(particle, box, t, colours, v_T1_x, v_T1_y, v_T1_z)
+    anharmonic_final_step(transverse_phonon, box, t, colours, v_T2_x, v_T2_y, v_T2_z, new_particle=1)
 
-    update_display(particle, transverse_phonon, box, points, title, colours)
+    update_display(particle, transverse_phonon, box, points, colours)
     return

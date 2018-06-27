@@ -1,6 +1,13 @@
+"""
+Utility methods for things such as controlling bouncing
+off the box walls and calculating velocity angles. 
+
+Author: Jyotirmai (Joe) Singh 26/6/18
+"""
 import numpy as np
 import os
 import Material
+
 PI = np.pi
 
 # Material specific constants from https://arxiv.org/pdf/1109.1193.pdf table 1.
@@ -15,16 +22,6 @@ ST = np.array([0.0,0.0,1.0,1.0])
 FT = np.array([0.0,1.0,0.0,1.0])
 L = np.array([1.0,0.0,0.0,1.0])
 
-# Velocities in cm/s for Ge
-#V_TRANSVERSE = 3.25
-#V_LONGITUDINAL = 5.31
-
-#velocity_dictionary = {
-#    1: V_TRANSVERSE,
-#    2: V_TRANSVERSE,
-#    3: V_LONGITUDINAL
-#}
-
 colour_dictionary = {
     1: ST,
     2: FT,
@@ -33,6 +30,13 @@ colour_dictionary = {
 
 
 def get_polar_angle(corner=0):
+    """
+    Getting a random polar angle sampling from a
+    sin(theta) distribution. 
+    :param corner: 1 if we are in a corner, to restrict 
+                   polar angle to 0 - PI/2.
+    :return: The polar angle sampled from a sin(theta) distribution.
+    """
     # We need to use random numbers from -1 to 1 to get this angle.
     # Because the CDF of sin(x) from 0 to pi is F = 1/2(1-cos(x))
     # so x = arccos(1-2F) where F is from 0 to 1 which means
@@ -47,14 +51,37 @@ def get_polar_angle(corner=0):
 
 
 def get_magnitude(vx, vy, vz):
+    """
+    Get vector magnitude. 
+    :param vx: x component.
+    :param vy: y component. 
+    :param vz: z component. 
+    :return: Magnitude of (vx, vy, vz) 
+    """
     return (vx ** 2 + vy ** 2 + vz ** 2)**.5
 
+
 def get_colour_array(num_array):
+    """
+    Assigns colours to each number in num_array,
+    which represents individual particles. 
+    
+    :param num_array: Array containing numbers to identify
+                      particles with and assign colours.
+    :return: An array where each position corresponds to the colour of the
+             particle at the corresponding position in num_array. 
+    """
     return np.array([colour_dictionary[num] for num in num_array])
 
 
 def beyond_boundary(particle, box):
-
+    """
+    Checks if particle is outside or on the boundaries of the box. 
+    
+    :param particle: Particle under consideration. 
+    :param box: The box in which the particle is in. 
+    :return: True if particle is outisde the box, False otherwise. 
+    """
     x = particle.get_x()
     y = particle.get_y()
     z = particle.get_z()
@@ -67,6 +94,12 @@ def beyond_boundary(particle, box):
 
 
 def check_no_particle_outside_box(box):
+    """
+    Checks if any particle is outside the box. 
+     
+    :param box: Box. 
+    :return: True if all particles are inside, False if one is outside. 
+    """
     width = box.get_width()
     height = box.get_height()
     depth = box.get_depth()
@@ -82,18 +115,43 @@ def check_no_particle_outside_box(box):
 
 
 def spherical_to_cartesian(r, polar, azimuthal):
+    """
+    Converts spherical coordinates to cartesian coordinates.
+    
+    :param r: Radius coordinate.  
+    :param polar: Polar angle. 
+    :param azimuthal: Azimuthal angle. 
+    :return: x, y, z coordinates. 
+    """
     x = r * np.sin(polar) * np.cos(azimuthal)
     y = r * np.sin(polar) * np.sin(azimuthal)
     z = r * np.cos(polar)
 
     return x, y, z
 
+
 def create_random_spherical_vel(v_mag):
+    """
+    Creates a velocity with magnitude v_mag 
+    and randomised direction. 
+    
+    :param v_mag: The output velocity magnitude. 
+    :return: 
+    """
     rand_polar = get_polar_angle()
     rand_azimuthal = np.random.uniform(0, 2 * PI)
     return spherical_to_cartesian(v_mag, rand_polar, rand_azimuthal)
 
+
 def get_velocity_angles(vx, vy, vz):
+    """
+    Get polar and azimuthal angles of vector (vx, vy, vz)
+    
+    :param vx: x component.
+    :param vy: y component. 
+    :param vz: z component. 
+    :return: Polar and azimuthal angles. 
+    """
 
     polar = 0
     azimuthal = 0
@@ -119,6 +177,15 @@ def get_velocity_angles(vx, vy, vz):
 
 
 def time_to_boundary(box, particle):
+    """
+    Calculates the time until particle hits 
+    the boundaries of the box with its current velocity vector. 
+    
+    :param box: Box which particle is in. 
+    :param particle: Particle.
+    :return: Time that particle would take to hit the 
+             wall at current velocity. 
+    """
 
     vx = particle.get_vx()
     vy = particle.get_vy()
@@ -242,7 +309,18 @@ def time_to_boundary(box, particle):
     return t_boundary, x_boundary, y_boundary, z_boundary
 
 
-def adjust_boundary_velocity(particle, box, title):
+def adjust_boundary_velocity(particle, box):
+    """
+    Simulate bounce off the wall by randomising 
+    velocity direction at boundary, respecting the 
+    position of the particle vs the wall and restricting
+    angles accordingly. Also prints a summary of what happened,
+    saying which particle hit the boundary at what point at what time
+    and with what velocity did it rebound. 
+    
+    :param particle: Particle hitting wall.
+    :param box: Box which has wall. 
+    """
 
     curr_vx, curr_vy, curr_vz = particle.get_vx(), particle.get_vy(), particle.get_vz()
     v_in = get_magnitude(curr_vx, curr_vy, curr_vz)
@@ -313,10 +391,17 @@ def adjust_boundary_velocity(particle, box, title):
     particle.add_event(event_str)
 
     print(event_str)
-    title.set_text('Phonon Simulation: Time={0:.8f}'.format(particle.get_t()))
 
 
-def propagate(particle, box, t, title):
+def propagate(particle, box, t):
+    """
+    Simulate particle moving forward for time t, taking hitting
+    wall into account. 
+    
+    :param particle: Particle moving. 
+    :param box: Box in which particle is in. 
+    :param t: Time for which box is simulated to move. 
+    """
 
     t_boundary, x_boundary, y_boundary, z_boundary = time_to_boundary(box, particle)
 
@@ -326,16 +411,24 @@ def propagate(particle, box, t, title):
         particle.set_x(x_boundary)
         particle.set_y(y_boundary)
         particle.set_z(z_boundary)
-        adjust_boundary_velocity(particle, box, title)
+        adjust_boundary_velocity(particle, box)
 
     # Otherwise can safely propagate for time t without hitting the wall.
     else:
         print("In propagation non boundary case.")
         particle.advance(t)
-        title.set_text('Phonon Simulation: time={0:.8f}'.format(particle.get_t()))
 
 
 def convert_from_particle_to_global_cartesian(x, y, z):
+    """
+    Convert from particle frame cartesian coordinates to
+    global frame cartesian coordinates. 
+    
+    :param x: Particle frame x coordinate.
+    :param y: Particle frame y coordinate.
+    :param z: Particle frame z coordinate.
+    :return: global x, y, z coordinates. 
+    """
     z_norm = get_magnitude(x, y, z)
     y_norm = get_magnitude(0, y, z)
     x_norm = get_magnitude(z ** 2 + y ** 2, -x * y, -x * z)
