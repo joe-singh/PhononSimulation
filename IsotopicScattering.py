@@ -5,7 +5,7 @@ Author: Jyotirmai (Joe) Singh
 """
 
 from UtilityMethods import *
-
+from BoundaryInteractions import propagate
 
 def isotopic_scatter_rate(box, particle):
     """
@@ -20,7 +20,7 @@ def isotopic_scatter_rate(box, particle):
     return box.get_material().get_isotope_scatter_rate() * (particle.get_f() ** 4)
 
 
-def phonon_isotope_scatter(particle, t, box, points):
+def phonon_isotope_scatter(particle, t, box, points, colours):
     """
     Simulation of an isotopic scatter. The velocity direction is changed 
     randomly while the magnitude is kept fixed (since phonon types do not 
@@ -57,7 +57,7 @@ def phonon_isotope_scatter(particle, t, box, points):
 
     # After scatter, simulate moving forward. Need to be careful about hitting boundary
 
-    propagate(particle, box, t)
+    propagate(particle, box, t, points, colours)
 
     x_points = box.get_x_array()
     y_points = box.get_y_array()

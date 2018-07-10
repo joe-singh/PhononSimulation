@@ -34,6 +34,12 @@ class Material:
     def get_anharmonic_decay_rate(self):
         return self._anharmonic_decay_rate
 
+    def get_LTT_ratio(self):
+        return self._LTT_ratio
+
+    def get_LLT_ratio(self):
+        return self._LLT_ratio
+
     def get_LLT_rate(self):
         return self._LLT_ratio * self._anharmonic_decay_rate
 

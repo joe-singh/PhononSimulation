@@ -6,12 +6,16 @@ Author: Jyotirmai (Joe) Singh 26/6/18
 """
 import numpy as np
 import os
+
 import Material
 
 PI = np.pi
+h = 6.63e-34
+k_b = 1.38e-23
 
 # Material specific constants from https://arxiv.org/pdf/1109.1193.pdf table 1.
 Germanium = Material.Material("Germanium", 3.67e-41, 6.43e-55, 5310, 3250, -0.732, -0.708, 0.376, 0.561, 5.32, 0.260)
+Silicon = Material.Material("Silicon", 2.43e-42, 7.41e-56, 9000, 5400, -0.429, -0.945, 0.524, 0.680, 2.33, 0.204)
 
 # Characteristic Colours to represent different phonon types.
 # ST - Slow Transverse
@@ -309,30 +313,14 @@ def time_to_boundary(box, particle):
     return t_boundary, x_boundary, y_boundary, z_boundary
 
 
-def adjust_boundary_velocity(particle, box):
-    """
-    Simulate bounce off the wall by randomising 
-    velocity direction at boundary, respecting the 
-    position of the particle vs the wall and restricting
-    angles accordingly. Also prints a summary of what happened,
-    saying which particle hit the boundary at what point at what time
-    and with what velocity did it rebound. 
-    
-    :param particle: Particle hitting wall.
-    :param box: Box which has wall. 
-    """
+def adjust_boundary_velocity(particle, box, polar_angle, azimuthal_angle):
 
     curr_vx, curr_vy, curr_vz = particle.get_vx(), particle.get_vy(), particle.get_vz()
     v_in = get_magnitude(curr_vx, curr_vy, curr_vz)
 
-    # Generate random angle to randomise bounce.
-    rand_polar = get_polar_angle()
-    # Define azimuthal angle
-    rand_azimuthal = np.random.uniform(0, 2 * PI)
-
-    cos_azimuthal_vel = v_in * np.cos(rand_polar) * np.cos(rand_azimuthal)
-    sin_azimuthal_vel = v_in * np.cos(rand_polar) * np.sin(rand_azimuthal)
-    polar_vel = v_in * np.sin(rand_polar)
+    cos_azimuthal_vel = v_in * np.sin(polar_angle) * np.cos(azimuthal_angle)
+    sin_azimuthal_vel = v_in * np.sin(polar_angle) * np.sin(azimuthal_angle)
+    polar_vel = abs(v_in * np.cos(polar_angle))
 
     # Corner cases first: will randomise this properly later because have to
     # include proper angular bounds for angles.
@@ -393,32 +381,6 @@ def adjust_boundary_velocity(particle, box):
     print(event_str)
 
 
-def propagate(particle, box, t):
-    """
-    Simulate particle moving forward for time t, taking hitting
-    wall into account. 
-    
-    :param particle: Particle moving. 
-    :param box: Box in which particle is in. 
-    :param t: Time for which box is simulated to move. 
-    """
-
-    t_boundary, x_boundary, y_boundary, z_boundary = time_to_boundary(box, particle)
-
-    # If particle propagates for time t and goes beyond the boundary, stop it at the
-    # boundary and change its velocity to simulate bouncing off the wall
-    if t_boundary <= t:
-        particle.set_x(x_boundary)
-        particle.set_y(y_boundary)
-        particle.set_z(z_boundary)
-        adjust_boundary_velocity(particle, box)
-
-    # Otherwise can safely propagate for time t without hitting the wall.
-    else:
-        print("In propagation non boundary case.")
-        particle.advance(t)
-
-
 def convert_from_particle_to_global_cartesian(x, y, z):
     """
     Convert from particle frame cartesian coordinates to
@@ -465,3 +427,10 @@ def convert_from_particle_to_global_cartesian(x, y, z):
     z_global = global_coords[2]
 
     return x_global, y_global, z_global
+
+def get_cos_angle():
+
+    # CDF of cos(x) from 0 to pi/2 is F = sin(x)
+    # so x = arcsin(F) where F in range 0 to 1.
+
+    return np.arcsin(np.random.rand())

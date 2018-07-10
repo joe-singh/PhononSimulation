@@ -7,8 +7,8 @@ Author: Jyotirmai (Joe) Singh
 from Particle import Particle
 from numpy import sin, cos, arccos, arctan2
 from UtilityMethods import *
+import BoundaryInteractions
 
-"""Process controls whether we calculate rate for LTT or LLT. 1 = LLT, 0 = LTT"""
 def get_anharmonic_rate(box, particle, LLT):
     """
     Calculates the anharmonic decay rate associated with this 
@@ -24,7 +24,7 @@ def get_anharmonic_rate(box, particle, LLT):
     """
     # Make the anharmonic rate basically 0 if this is not a longitudinal phonon
     if particle.get_type() != 3:
-        return 1e-69
+        return 1e-70
 
     material = box.get_material()
     f = particle.get_f()
@@ -35,7 +35,7 @@ def get_anharmonic_rate(box, particle, LLT):
     return material.get_LTT_rate() * (f ** 5)
 
 
-def accept_reject(x_min, x_max, f, rand_max):
+def accept_reject(x_min, x_max, f, d, LTT, box, rand_max):
     """
     Accept-Reject algorithm to simulate drawing from a 
     distribution f which is a pdf in the range x_min and x_max. 
@@ -56,7 +56,7 @@ def accept_reject(x_min, x_max, f, rand_max):
         # Draw a random number of the range 0 to rand_max:
         rand_draw = np.random.uniform(0, rand_max)
 
-        if rand_draw <= f(rand_ratio):
+        if rand_draw <= f(rand_ratio, d, LTT, box):
             omega_ratio = rand_ratio
             break
 
@@ -84,23 +84,27 @@ def convert_particle_to_global(phi, theta, phi_p, theta_p):
     return phi_global, theta_global
 
 
-def anharmonic_final_step(particle, box, t, colours, vx, vy, vz, new_particle=0):
+def anharmonic_final_step(particle, box, t, colours, points, vx=0, vy=0, vz=0, new_particle=0):
     """
     Utility method to update relevant quantities once all anharmonic processes
-    have been carried out.
+    have been carried out. If vx, vy, and vz are all 0 (as is default), the method
+    assumes the particle velocity has already been set by some other method and we are
+    just updating colours/propagating the particle now. 
     
     :param particle: Phonon to be updated. 
     :param box: Box of phonon. 
     :param t: Time for which phonon should propagate after anharmonically decaying. 
     :param colours: The current colour configuration of the phonons. 
-    :param vx: x velocity
-    :param vy: y velocity
-    :param vz: z velocity
+    :param vx: x velocity - 0 if velocity has already been set by some other method
+    :param vy: y velocity - 0 if velocity has already been set by some other method
+    :param vz: z velocity - 0 if velocity has already been set by some other method
     :param new_particle: Flag checking if we are updating an old particle or creating a
                          new one.
     """
-    particle.set_velocity(vx, vy, vz)
-    particle.calculate_new_k()
+
+    if vx or vy or vz:
+        particle.set_velocity(vx, vy, vz)
+        particle.calculate_new_k()
 
     if new_particle:
         box.add_particle(particle)
@@ -108,8 +112,20 @@ def anharmonic_final_step(particle, box, t, colours, vx, vy, vz, new_particle=0)
     else:
         colours[box.get_particle_no(particle.get_name())] = particle.get_type()
 
-    propagate(particle, box, t)
+    BoundaryInteractions.propagate(particle, box, t, points, colours)
     return
+
+
+# t argument should be 0 since surface interactions assume particle has come and
+# hit the boundary already and now will undergo the change so no propagation should happen.
+def surface_anharmonic_final_step(particle, new_particle, box, colours, t,
+                                  points, theta_1, phi_1, theta_2, phi_2):
+
+    adjust_boundary_velocity(particle, box, theta_1, phi_1)
+    adjust_boundary_velocity(new_particle, box, theta_2, phi_2)
+    anharmonic_final_step(particle, box, t, colours, points)
+    anharmonic_final_step(new_particle, box, t, colours, points, new_particle=1)
+    update_display(particle, new_particle, box, points, colours)
 
 
 def update_display(original_particle, new_particle, box, points, colours):
@@ -148,154 +164,11 @@ def update_display(original_particle, new_particle, box, points, colours):
     return
 
 
-def anharmonic_decay_LLT(particle, box, t, points, colours):
-    """
-    Method to simulate anharmonic decay for the L->L+T mode. 
-    
-    :param particle: Phonon undergoing decay. 
-    :param box: Phonon box. 
-    :param t: Time over which decay + propagation occurs. 
-    :param points: The phonon location information for the matplotlib animation. 
-    :param colours: The current colour configuration of the phonons. 
-    """
+def omega_pdf(x, d, LTT, box):
 
     material = box.get_material()
-    V_TRANSVERSE = material.get_transverse_vel()
-    V_LONGITUDINAL = material.get_longitudinal_vel()
 
-    # Advance time
-    box.update_time(particle.get_t() + t)
-
-    # Create new particle that will be the transverse phonon. Choose
-    # randomly from ST and FT
-
-    new_phonon_type = np.random.randint(1,3)
-    curr_x, curr_y, curr_z = particle.get_x(), particle.get_y(), particle.get_z()
-
-    # Create new phonon with 0 momentum and frequency traveling in the same direction as the initial.
-    # We will change all these variables below.
-    transverse_phonon = Particle(curr_x, curr_y, curr_z, 0, 0, 0,
-                            "Particle " + str(box.get_num_particles()),
-                            new_phonon_type, 0, t=particle.get_t())
-
-    w_0 = particle.get_w()
-
-    # Get angles of initial velocity. Need this for coordinate conversion later.
-    theta, phi = get_velocity_angles(particle.get_vx(), particle.get_vy(), particle.get_vz())
-
-    # Now need to pull new omega value based on the statistics. From the papers
-    # (https://arxiv.org/pdf/1109.1193.pdf and Tamura PRB 48 #13 1993) we know
-    # the distribution for w_L'/w_L is given by the following function.
-
-    d = V_LONGITUDINAL / V_TRANSVERSE
-    x_min = (d - 1) / (d + 1)
-
-    def omega_longitudinal_distribution(x):
-
-        # Make sure within bounds where this is a valid pdf
-        assert x_min <= x <= 1
-
-        y = (x ** -2) * (1 - x ** 2) ** 2 * \
-            ((1 + x) ** 2 - (d ** 2) * (1 - x) ** 2) * \
-            (1 + x ** 2 - (d ** 2) * (1 - x) ** 2) ** 2
-        return y
-
-    # For the accept reject method, we need a good way of identifying a suitable maximum value
-    # that is also economical in terms of computational time. Since for germanium we can plot this
-    # distribution since we know d exactly, we can hardcode an economical maximum value in for now.
-    rand_max = 2.5
-    omega_ratio = accept_reject(x_min, 1, omega_longitudinal_distribution, rand_max)
-
-    # Set new particle omegas.
-    w_L = omega_ratio * w_0
-    w_T = w_0 - w_L
-
-    particle.set_w(w_L)
-    transverse_phonon.set_w(w_T)
-
-    # We can also use omega_ratio to get the final angles of the two phonons now
-    # from the initial velocity of the incident phonon, which we will use as the z-axis.
-    x = omega_ratio
-
-    theta_L_after = np.arccos((1 + x ** 2 - (d ** 2) * (1 - x) ** 2) / (2 * x))
-    theta_T_after = np.arccos((1 - x ** 2 + (d ** 2) * (1 - x) ** 2) / (2 * d * (1 - x)))
-
-    phi_L = np.random.uniform(0, 2 * PI)
-
-    # Convert to spherical coordinates with z axis now pointing up. From https://arxiv.org/pdf/1109.1193.pdf
-    # p 12, eqs 15 & 16.
-    phi_L_original = phi_L
-
-    phi_L, theta_L = convert_particle_to_global(phi, theta, phi_L, theta_L_after)
-    phi_T, theta_T = convert_particle_to_global(phi, theta, 2 * PI - phi_L_original, theta_T_after)
-
-    v_L_x, v_L_y, v_L_z = spherical_to_cartesian(V_LONGITUDINAL, theta_L, phi_L)
-    v_T_x, v_T_y, v_T_z = spherical_to_cartesian(V_TRANSVERSE, theta_T, phi_T)
-
-    # Set velocity coordinates and new k vector.
-    anharmonic_final_step(particle, box, t, colours, v_L_x, v_L_y, v_L_z)
-    anharmonic_final_step(transverse_phonon, box, t, colours, v_T_x, v_T_y, v_T_z, new_particle=1)
-
-    # Update display
-    update_display(particle, transverse_phonon, box, points, colours)
-    return
-
-
-def anharmonic_decay_LTT(particle, box, t, points, colours):
-    """
-    Method to simulate anharmonic decay for the L->T+T mode. 
-
-    :param particle: Phonon undergoing decay. 
-    :param box: Phonon box. 
-    :param t: Time over which decay + propagation occurs. 
-    :param points: The phonon location information for the matplotlib animation. 
-    :param colours: The current colour configuration of the phonons. 
-    """
-
-    material = box.get_material()
-    V_TRANSVERSE = material.get_transverse_vel()
-    V_LONGITUDINAL = material.get_longitudinal_vel()
-
-    # Advance time
-    box.update_time(particle.get_t() + t)
-
-    # Create new particle that will be the transverse phonon. Choose
-    # randomly from ST and FT
-
-    new_phonon_type = np.random.randint(1, 3)
-    old_phonon_new_type = np.random.randint(1, 3)
-
-    # Change the old particle to a transverse phonon type.
-    particle.set_type(old_phonon_new_type)
-
-    curr_x, curr_y, curr_z = particle.get_x(), particle.get_y(), particle.get_z()
-
-    # Create new phonon with 0 momentum and frequency traveling in the same direction as the initial.
-    # We will change all these variables below.
-    transverse_phonon = Particle(curr_x, curr_y, curr_z, 0, 0, 0,
-                                 "Particle " + str(box.get_num_particles()),
-                                 new_phonon_type, 0, t=particle.get_t())
-
-    w_0 = particle.get_w()
-
-    # Get angles of initial velocity. Need this for coordinate conversion later.
-    theta, phi = get_velocity_angles(particle.get_vx(), particle.get_vy(), particle.get_vz())
-
-    # Now need to pull new omega value based on the statistics. From the papers
-    # (https://arxiv.org/pdf/1109.1193.pdf and Tamura PRB 48 #13 1993) we know
-    # the distribution for w_L'/w_L is given by the following function.
-
-    d = V_LONGITUDINAL / V_TRANSVERSE
-    x_1 = (d - 1) / 2.0
-    x_2 = (d + 1) / 2.0
-
-    def omega_longitudinal_distribution(x):
-
-        # Make sure within bounds where this is a valid pdf
-        assert x_1 <= x <= x_2
-
-        # Material specific decay constants.
-
+    if LTT:
         b = material.get_beta()
         g = material.get_gamma()
         l = material.get_lambda()
@@ -306,52 +179,145 @@ def anharmonic_decay_LTT(particle, box, t, points, colours):
         C = b + l + 2 * (g + m)
         D = (1 - d ** 2) * (2 * b + 4 * g + l + 3 * m)
 
-        y = (A + B * d * x - B * x ** 2) ** 2 + (C * x * (d - x) - (D / (d - x)) * (x - d - (1 - d ** 2) / (4 * x))) ** 2
+        y = (A + B * d * x - B * x ** 2) ** 2 + \
+            (C * x * (d - x) - (D / (d - x)) * (x - d - (1 - d ** 2) / (4 * x))) ** 2
         return y
 
-    # For the accept reject method, we need a good way of identifying a suitable maximum value
-    # that is also economical in terms of computational time. Since for germanium we can plot this
-    # distribution since we know d exactly, we can hardcode an economical maximum value in for now.
+    y = (x ** -2) * (1 - x ** 2) ** 2 * \
+        ((1 + x) ** 2 - (d ** 2) * (1 - x) ** 2) * \
+        (1 + x ** 2 - (d ** 2) * (1 - x) ** 2) ** 2
+    return y
 
-    rand_max = 10.0
-    omega_ratio = accept_reject(x_1, x_2, omega_longitudinal_distribution, rand_max)
 
-    # Set new particle omegas. Watch out for different definition of x here, its omega_ratio * d
-    w_T1 = omega_ratio * w_0 / d
-    w_T2 = w_0 - w_T1
+def get_omega_pdf_bounds(d, LTT):
 
-    particle.set_w(w_T1)
-    transverse_phonon.set_w(w_T2)
+    if LTT:
+        x_min = (d - 1) / 2.0
+        x_max = (d + 1) / 2.0
+    else:
+        x_min = (d - 1) / (d + 1)
+        x_max = 1.0
 
-    # We can also use omega_ratio to get the final angles of the two phonons now
-    # from the initial velocity of the incident phonon, which we will use as the z-axis.
+    return x_min, x_max
+
+
+def get_post_anharmonic_split_cos_theta_dist(x, d, LTT):
+    """
+    Returns the cos(theta) values for the phonons following a 
+    decay. LTT dictates whether these values are for the LTT case or
+    the LLT one. From https://arxiv.org/pdf/1109.1193.pdf pg 11-12 although
+    the ones for the LTT case are incorrect (their formula for cos(theta) is 
+    not strictly bounded by ±1 so I have calculated my own using conservation 
+    of 4-momentum. 
+    """
+    cos_theta_1, cos_theta_2 = 0.0, 0.0
+    if LTT:
+        cos_theta_1 = (1 - d ** 2 + 2 * x * d)/(2 * x)
+        cos_theta_2 = (1 - x * cos_theta_1) / (d - x)
+    else:
+        cos_theta_1 = (1 + x ** 2 - (d ** 2) * (1 - x) ** 2) / (2 * x)
+        cos_theta_2 = (1 - x ** 2 + (d ** 2) * (1 - x) ** 2) / (2 * d * (1 - x))
+
+    return cos_theta_1, cos_theta_2
+
+
+def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
+
+    material = box.get_material()
+    V_TRANSVERSE = material.get_transverse_vel()
+    V_LONGITUDINAL = material.get_longitudinal_vel()
+
+    box.update_time(particle.get_t() + t)
+
+    new_phonon_type = np.random.randint(1, 3)
+
+    # Get angles of initial velocity. Need this for coordinate conversion later.
+    theta, phi = get_velocity_angles(particle.get_vx(), particle.get_vy(), particle.get_vz())
+
+    # Change original particle to a transverse type if LTT decay.
+    if LTT:
+        old_phonon_type = np.random.randint(1, 3)
+        particle.set_type(old_phonon_type)
+
+    curr_x, curr_y, curr_z = particle.get_x(), particle.get_y(), particle.get_z()
+
+    # Create new phonon with 0 momentum and frequency traveling in the same direction as the initial.
+    # We will change all these variables below.
+    new_phonon = Particle(curr_x, curr_y, curr_z, 0, 0, 0,
+                            "Particle " + str(box.get_num_particles()),
+                            new_phonon_type, 0, t=particle.get_t())
+
+    w_0 = particle.get_w()
+
+    # If we are using this for a boundary anharmonic decay, simply pick a random direction obeying
+    # Lambertian diffusion.
+    if boundary:
+        theta_1, theta_2 = get_cos_angle(), get_cos_angle()
+        phi_1, phi_2 = np.random.uniform(0, 2 * PI), np.random.uniform(0, 2 * PI)
+
+    d = V_LONGITUDINAL / V_TRANSVERSE
+
+    x_min, x_max = get_omega_pdf_bounds(d, LTT)
+
+    rand_max = 2.5
+
+    if LTT:
+        rand_max = 10.0
+
+    omega_ratio = accept_reject(x_min, x_max, omega_pdf, d, LTT, box, rand_max)
+
+    if LTT:
+        w_0_after = omega_ratio * w_0 / d
+    else:
+        w_0_after = omega_ratio * w_0
+
+    w_new_after = w_0 - w_0_after
+
+    particle.set_w(w_0_after)
+    new_phonon.set_w(w_new_after)
+
+    v_0 = V_LONGITUDINAL
+    v_new = V_TRANSVERSE
+
+    if LTT:
+        v_0 = V_TRANSVERSE
+
+    # Having set the energy, if this is the boundary case, we can just change the
+    # velocities and end this.
+    if boundary:
+
+        v_0_x, v_0_y, v_0_z = spherical_to_cartesian(v_0, theta_1, phi_1)
+        v_new_x, v_new_y, v_new_z = spherical_to_cartesian(v_new, theta_2, phi_2)
+        particle.set_velocity(v_0_x, v_0_y, v_0_z)
+        new_phonon.set_velocity(v_new_x, v_new_y, v_new_z)
+
+        surface_anharmonic_final_step(particle, new_phonon, box, colours,
+                                      0, points, theta_1, phi_1, theta_2, phi_2)
+        return
 
     x = omega_ratio
 
-    cos_theta_t1 = (1 - d ** 2 + 2 * x * d)/(2 * x)
+    cos_theta_1, cos_theta_2 = get_post_anharmonic_split_cos_theta_dist(x, d, LTT)
+    theta_1, theta_2 = arccos(cos_theta_1), arccos(cos_theta_2)
+    phi_1 = np.random.uniform(0, 2 * PI)
 
-    # From https://arxiv.org/pdf/1109.1193.pdf
-    # p 12, eqs 15 & 16. Incorrect formulas though, equations 13 and 14
-    # are not strictly within -1 to 1 for the given range. I have recalculated
-    # my own from 4-momentum conservation.
-    theta_T1 = arccos(cos_theta_t1)
-    theta_T2 = arccos((1 - x * cos_theta_t1) / (d - x))
+    phi_0_after, theta_0_after = convert_particle_to_global(phi, theta, phi_1, theta_1)
+    phi_new_after, theta_new_after = convert_particle_to_global(phi, theta, 2 * PI - phi_1, theta_2)
 
-    phi_T1 = np.random.uniform(0, 2 * PI)
-    phi_T1_original = phi_T1
 
-    # Convert to spherical coordinates with z axis now pointing up. From https://arxiv.org/pdf/1109.1193.pdf
-    # p 12, eqs 15 & 16.
-
-    phi_T1, theta_T1 = convert_particle_to_global(phi, theta, phi_T1, theta_T1)
-    phi_T2, theta_T2 = convert_particle_to_global(phi, theta, 2 * PI - phi_T1_original, theta_T2)
-
-    v_T1_x, v_T1_y, v_T1_z = spherical_to_cartesian(V_TRANSVERSE, theta_T1, phi_T1)
-    v_T2_x, v_T2_y, v_T2_z = spherical_to_cartesian(V_TRANSVERSE, theta_T2, phi_T2)
+    v_0_x, v_0_y, v_0_z = spherical_to_cartesian(v_0, theta_0_after, phi_0_after)
+    v_new_x, v_new_y, v_new_z = spherical_to_cartesian(v_new, theta_new_after, phi_new_after)
 
     # Now can set velocity coordinates. Recalculate k vectors also.
-    anharmonic_final_step(particle, box, t, colours, v_T1_x, v_T1_y, v_T1_z)
-    anharmonic_final_step(transverse_phonon, box, t, colours, v_T2_x, v_T2_y, v_T2_z, new_particle=1)
-
-    update_display(particle, transverse_phonon, box, points, colours)
+    anharmonic_final_step(particle, box, t, colours, points, v_0_x, v_0_y, v_0_z)
+    anharmonic_final_step(new_phonon, box, t, colours, points, v_new_x, v_new_y, v_new_z, new_particle=1)
     return
+
+
+def anharmonic_decay_LLT(particle, box, t, points, colours, boundary=0):
+    generic_anharmonic_decay(particle, box, t, points, colours, boundary, 0)
+
+
+def anharmonic_decay_LTT(particle, box, t, points, colours, boundary=0):
+    generic_anharmonic_decay(particle, box, t, points, colours, boundary, 1)
+

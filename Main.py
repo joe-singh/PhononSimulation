@@ -9,6 +9,7 @@ import matplotlib.animation as animation
 import mpl_toolkits.mplot3d.axes3d
 from AnharmonicDecay import *
 from IsotopicScattering import *
+from BoundaryInteractions import *
 from Box import Box
 
 # Max characteristic phonon frequency. Set at 10 THz
@@ -75,14 +76,14 @@ def simulate_step(frames, box, points, colours, title):
 
     if smallest_time == t_isotopic:
         print("ISOTOPIC")
-        phonon_isotope_scatter(particle, t_isotopic, box, points)
+        phonon_isotope_scatter(particle, t_isotopic, box, points, colours)
 
     elif smallest_time == t_anharmonic_LLT:
-        print("ANHARMONIC DECAY LLT")
+        print("BULK ANHARMONIC DECAY LLT")
         anharmonic_decay_LLT(particle, box, t_anharmonic_LLT, points, colours)
 
     elif smallest_time == t_anharmonic_LTT:
-        print("ANHARMONIC DECAY LTT")
+        print("BULK ANHARMONIC DECAY LTT")
         anharmonic_decay_LTT(particle, box, t_anharmonic_LTT, points, colours)
     else:
         print("BOUNDARY")
@@ -94,11 +95,12 @@ def simulate_step(frames, box, points, colours, title):
         particle.set_x(x_boundary)
         particle.set_y(y_boundary)
         particle.set_z(z_boundary)
-        # Check if the new position is at the boundary or beyond. If it is change
-        # the velocity vector to make it reflect.
-        adjust_boundary_velocity(particle, box)
 
-        # Now with the appropriate position and velocity, just propagate the particle.
+        # Check if the new position is at the boundary or beyond. If it is change
+        # the velocity vector according to the appropriate process. Simulate surface effects.
+        boundary_interaction(particle, box, points, colours)
+
+    # Update position.
 
     x_points = box.get_x_array()
     y_points = box.get_y_array()
@@ -109,6 +111,7 @@ def simulate_step(frames, box, points, colours, title):
 
     if abs(Delta_V) > 1e-6:
         print("Velocities not being conserved properly! Delta_V: %f" % Delta_V)
+        print("Original particle type is: %f" % particle.get_type())
         os._exit(1)
 
     # Final check to make sure no particle has jumped outside.
@@ -141,7 +144,7 @@ def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
     particle_array = []
     colour_dict = {}
 
-    material = Germanium
+    material = Silicon
 
     # Generating all initial particles.
     for i in range(num_particles):
@@ -185,9 +188,9 @@ def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
     title = ax.set_title('3D Test')
     ani = animation.FuncAnimation(fig, simulate_step, frames=np.arange(0, num_steps),
                                   fargs=(box, points, colour_dict, title),
-                                  interval=50)
+                                  interval=100)
 
     plt.grid()
     plt.show()
 
-run(50, 1e-7, 1e-7, 1e-7, 4000)
+run(10, 1e-7, 1e-7, 1e-7, 4000)
