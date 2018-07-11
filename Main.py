@@ -152,7 +152,12 @@ def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
         random_y = np.random.uniform(0, box_height)
         random_z = np.random.uniform(0, box_depth)
         # Map particle indices to colours
-        rand_type = np.random.randint(1, 4)
+
+        # Initial distribution of phonons governed by the distribution in
+        # http://cdms.berkeley.edu/Dissertations/mpyle.pdf page 182.
+        # 54.1% Slow Transverse, 36.3% Fast Transverse, 9.6% Longitudinal
+        rand_type = (np.random.choice(3, 1, p=[0.541, 0.363, 0.096]) + 1)[0]
+        print(rand_type)
         colour_dict[i] = rand_type
 
         # Ensures that phonons are generated with the appropriate velocity
@@ -193,4 +198,4 @@ def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
     plt.grid()
     plt.show()
 
-run(10, 1e-7, 1e-7, 1e-7, 4000)
+run(100, 1e-7, 1e-7, 1e-7, 4000)

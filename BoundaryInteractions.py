@@ -2,13 +2,19 @@
 Class simulating boundary interactions. Assumes particles are
 already at boundary. 
 
+Author: Jyotirmai (Joe) Singh 10/7/18
+
 """
-import numpy as np
 from UtilityMethods import *
 import AnharmonicDecay
 
 def specular_scatter(particle, box):
-
+    """
+    Simulates specular scattering. 
+    
+    :param particle: The particle undergoing the interaction
+    :param box: The box in which the particle is in  
+    """
     print("SPECULAR SCATTER")
     x, y, z = particle.get_x(), particle.get_y(), particle.get_z()
     vx, vy, vz = particle.get_vx(), particle.get_vy(), particle.get_vz()
@@ -26,15 +32,27 @@ def specular_scatter(particle, box):
 
 
 def lambertian_scatter(particle, box):
-
+    """
+    Simulates scattering by a Lambertian process with 
+    a polar angle dependent on a cos(theta) distribution. 
+    
+    :param particle: The particle undergoing the interaction
+    :param box: The box in which the particle is in 
+    """
     diffusive_angle = get_cos_angle()
     azimuthal_angle = np.random.uniform(0, 2 * PI)
 
     print("DIFFUSIVE SCATTER")
     adjust_boundary_velocity(particle, box, diffusive_angle, azimuthal_angle)
-    return
 
 def cylindrical_vol_and_sa(r, h):
+    """
+    Calculate volume and surface area of a cylinder. 
+    
+    :param r: The radius in m
+    :param h: The height in m
+    :return: The volume and surface area
+    """
     return PI * h * r ** 2, 2 * PI * (r * h + r ** 2)
 
 def convert_w_to_T(w):
@@ -113,6 +131,16 @@ def get_diffusive_scatter_rates(particle, box):
 
 
 def boundary_interaction(particle, box, points, colours):
+    """
+    Method to simulate boundary interactions. Assumes the particle
+    is already present at the boundary and then simulates Lambertian 
+    or SAD scattering as necessary. 
+    
+    :param particle: The particle undergoing the interactions
+    :param box: The box in which the particle is in 
+    :param points: The array of points associated with the phonon locations
+    :param colours: The colour configuration of the phonons
+    """
 
     material = box.get_material()
     lambertian_rate, sad_rate = get_diffusive_scatter_rates(particle, box)

@@ -1,4 +1,8 @@
+"""
+Material class to simulate phonon related properties of media. 
 
+Author: Jyotirmai (Joe) Singh 10/7/18
+"""
 class Material:
 
     def __init__(self, name, isotope_scatter_rate, anharmonic_decay_rate, v_longitudinal, v_transverse,

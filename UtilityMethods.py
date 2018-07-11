@@ -380,56 +380,11 @@ def adjust_boundary_velocity(particle, box, polar_angle, azimuthal_angle):
 
     print(event_str)
 
-
-def convert_from_particle_to_global_cartesian(x, y, z):
-    """
-    Convert from particle frame cartesian coordinates to
-    global frame cartesian coordinates. 
-    
-    :param x: Particle frame x coordinate.
-    :param y: Particle frame y coordinate.
-    :param z: Particle frame z coordinate.
-    :return: global x, y, z coordinates. 
-    """
-    z_norm = get_magnitude(x, y, z)
-    y_norm = get_magnitude(0, y, z)
-    x_norm = get_magnitude(z ** 2 + y ** 2, -x * y, -x * z)
-
-    # This matrix will map us from the global coordinate system to the one with
-    # z axis parallel to the velocity. The x/y coordinates for the particle system
-    # are chosen arbitrarily since this process is azimuthally symmetric.
-    #
-    # The transform is S -> S' defined by
-    # [0,0,1] -> v
-    # [0,1,0] -> [1,0,0] x v = w
-    # [1,0,0] -> w x v = u
-    #
-    # The actual final target vectors are normalised, hence the norm terms above.
-    #
-    # The last one is chosen to ensure a right handed coordinate system
-    # in both cases. The v corresponds to the new z, the w to the new y, and
-    # y x z = x so in here u = w x v
-
-    matrix = np.array([[0, (x ** 2 + y ** 2) / y_norm, x / z_norm],
-                       [-z / x_norm, -(x * y) / y_norm, y/ z_norm],
-                       [y/x_norm, -(x*z)/y_norm, z/z_norm]])
-
-    #matrix = np.array([[1,0,0],
-    #                   [0,1,0],
-    #                   [0,0,1]])
-    inverse = np.linalg.inv(matrix)
-
-    particle_coords = np.array([x, y, z])
-    global_coords = np.dot(inverse, particle_coords)
-
-    x_global = global_coords[0]
-    y_global = global_coords[1]
-    z_global = global_coords[2]
-
-    return x_global, y_global, z_global
-
 def get_cos_angle():
-
+    """
+    Draw from a cos(x) distribution from 0 to pi/2
+    :return: Value drawn from cos(x) distribution  
+    """
     # CDF of cos(x) from 0 to pi/2 is F = sin(x)
     # so x = arcsin(F) where F in range 0 to 1.
 

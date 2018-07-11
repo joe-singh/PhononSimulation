@@ -1,7 +1,7 @@
 """
 Anharmonic decay class. Includes L->L+T and L->T+T decays. 
  
-Author: Jyotirmai (Joe) Singh
+Author: Jyotirmai (Joe) Singh 10/7/18
 """
 
 from Particle import Particle
@@ -91,15 +91,15 @@ def anharmonic_final_step(particle, box, t, colours, points, vx=0, vy=0, vz=0, n
     assumes the particle velocity has already been set by some other method and we are
     just updating colours/propagating the particle now. 
     
-    :param particle: Phonon to be updated. 
-    :param box: Box of phonon. 
-    :param t: Time for which phonon should propagate after anharmonically decaying. 
-    :param colours: The current colour configuration of the phonons. 
-    :param vx: x velocity - 0 if velocity has already been set by some other method
-    :param vy: y velocity - 0 if velocity has already been set by some other method
-    :param vz: z velocity - 0 if velocity has already been set by some other method
-    :param new_particle: Flag checking if we are updating an old particle or creating a
-                         new one.
+    :param particle: The particle undergoing surface decay
+    :param box: The daughter particle produced as a result
+    :param t: The time for which particles propagate afterwards.
+    :param colours: The current colour configuration of the phonons
+    :param points: The points giving the phonons' locations
+    :param vx: The x component of the velocity
+    :param vy: The y component of the velocity
+    :param vz: The z component of the velocity
+    :param new_particle: The new particle created in the anharmonic decay
     """
 
     if vx or vy or vz:
@@ -120,6 +120,24 @@ def anharmonic_final_step(particle, box, t, colours, points, vx=0, vy=0, vz=0, n
 # hit the boundary already and now will undergo the change so no propagation should happen.
 def surface_anharmonic_final_step(particle, new_particle, box, colours, t,
                                   points, theta_1, phi_1, theta_2, phi_2):
+    """
+    Utility method to finish execution of anharmonic methods once other boundary 
+    processes have been carried out. 
+    
+    :param particle: The particle undergoing surface decay
+    :param new_particle: The daughter particle produced as a result
+    :param box: The box in which the interaction is occurring
+    :param colours: The current colour configuration of the phonons
+    :param t: The time argument is expected to be 0 since the principle 
+              of boundary interactions is that they occur after the particle 
+              has propagated to the wall but this may be changed if further propagation is
+              wanted
+    :param points: The points giving the phonons' locations
+    :param theta_1: The polar angle with which the first particle reflects off the boundary
+    :param phi_1: The azimuthal angle with which the first particle reflects off the boundary
+    :param theta_2: The polar angle with which the second particle reflects off the boundary
+    :param phi_2: The azimuthal angle with which the second particle reflects off the boundary 
+    """
 
     adjust_boundary_velocity(particle, box, theta_1, phi_1)
     adjust_boundary_velocity(new_particle, box, theta_2, phi_2)
@@ -222,7 +240,26 @@ def get_post_anharmonic_split_cos_theta_dist(x, d, LTT):
 
 
 def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
-
+    """
+    Method to simulate anharmonic decay in both LTT and LLT modes, and to simulate
+    anharmonic decays on the boundary. Anharmonic decays turn one phonon into two 
+    with the angles first defined relative to the original velocity vector of the 
+    incident particle and then converted to the global coordinate system with the 
+    polar axis pointing in the +z direction. 
+    
+    The omega distribution is governed by pdfs from Tamura, Phys. Rev. B 31, #4 
+    and the distribution of cos(theta) of the new particles is from 
+    https://arxiv.org/pdf/1109.1193.pdf
+    
+    :param particle: The particle undergoing the anharmonic decay
+    :param box: The box in which the decay is happening
+    :param t: The time of propagation of the daughter phonons
+    :param points: The array of points associated with the phonon locations
+    :param colours: The colour configuration of the phonons
+    :param boundary: Flag to signal if this is a boundary event or not
+    :param LTT: Flag to signal if we are simulating LTT or LLT decay. 0 if LLT 
+                else LTT
+    """
     material = box.get_material()
     V_TRANSVERSE = material.get_transverse_vel()
     V_LONGITUDINAL = material.get_longitudinal_vel()
