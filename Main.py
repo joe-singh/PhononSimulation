@@ -13,7 +13,11 @@ from BoundaryInteractions import *
 from Box import Box
 
 # Max characteristic phonon frequency. Set at 10 THz
-MAX_FREQ = 5e12
+LOWER_BOUND_FREQ = 1e9
+UPPER_BOUND_FREQ = 524e9
+UPPER_BOUND_FREQ_L = 6.2e12
+UPPER_BOUND_FREQ_FT = 3.7e12
+UPPER_BOUND_FREQ_ST = 2.4e12
 
 PI = np.pi
 
@@ -157,7 +161,6 @@ def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
         # http://cdms.berkeley.edu/Dissertations/mpyle.pdf page 182.
         # 54.1% Slow Transverse, 36.3% Fast Transverse, 9.6% Longitudinal
         rand_type = (np.random.choice(3, 1, p=[0.541, 0.363, 0.096]) + 1)[0]
-        print(rand_type)
         colour_dict[i] = rand_type
 
         # Ensures that phonons are generated with the appropriate velocity
@@ -166,7 +169,7 @@ def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
         velocity = material.get_particle_velocity(rand_type)
 
         random_vx, random_vy, random_vz = create_random_spherical_vel(velocity)
-        random_freq = np.random.uniform(MAX_FREQ/2.0, 3 * MAX_FREQ/2.0)
+        random_freq = np.random.uniform(LOWER_BOUND_FREQ, UPPER_BOUND_FREQ)
 
         ptcle = Particle(random_x, random_y, random_z, random_vx, random_vy, random_vz,
                          "Particle " + str(i), rand_type, random_freq)
@@ -198,4 +201,4 @@ def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
     plt.grid()
     plt.show()
 
-run(100, 1e-7, 1e-7, 1e-7, 4000)
+run(50, 1e-7, 1e-7, 1e-7, 4000)

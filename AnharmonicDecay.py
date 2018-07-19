@@ -187,19 +187,19 @@ def omega_pdf(x, d, LTT, box):
     material = box.get_material()
 
     if LTT:
-        b = material.get_beta()
-        g = material.get_gamma()
-        l = material.get_lambda()
-        m = material.get_mu()
+            b = material.get_beta()
+            g = material.get_gamma()
+            l = material.get_lambda()
+            m = material.get_mu()
 
-        A = (1 / 2) * (1 - d ** 2) * (b + l + (1 + d ** 2) * (g + m))
-        B = b + l + 2 * (d ** 2) * (g + m)
-        C = b + l + 2 * (g + m)
-        D = (1 - d ** 2) * (2 * b + 4 * g + l + 3 * m)
+            A = (1 / 2) * (1 - d ** 2) * (b + l + (1 + d ** 2) * (g + m))
+            B = b + l + 2 * (d ** 2) * (g + m)
+            C = b + l + 2 * (g + m)
+            D = (1 - d ** 2) * (2 * b + 4 * g + l + 3 * m)
 
-        y = (A + B * d * x - B * x ** 2) ** 2 + \
-            (C * x * (d - x) - (D / (d - x)) * (x - d - (1 - d ** 2) / (4 * x))) ** 2
-        return y
+            y = (A + B * d * x - B * x ** 2) ** 2 + \
+                (C * x * (d - x) - (D / (d - x)) * (x - d - (1 - d ** 2) / (4 * x))) ** 2
+            return y
 
     y = (x ** -2) * (1 - x ** 2) ** 2 * \
         ((1 + x) ** 2 - (d ** 2) * (1 - x) ** 2) * \
@@ -266,6 +266,7 @@ def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
 
     box.update_time(particle.get_t() + t)
 
+    # Choose a new random type 1 or 2, corresponding to transverse phonons.
     new_phonon_type = np.random.randint(1, 3)
 
     # Get angles of initial velocity. Need this for coordinate conversion later.
@@ -273,6 +274,7 @@ def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
 
     # Change original particle to a transverse type if LTT decay.
     if LTT:
+        # Choose a new random type 1 or 2, corresponding to transverse phonons.
         old_phonon_type = np.random.randint(1, 3)
         particle.set_type(old_phonon_type)
 
@@ -323,13 +325,17 @@ def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
     # velocities and end this.
     if boundary:
 
+
         v_0_x, v_0_y, v_0_z = spherical_to_cartesian(v_0, theta_1, phi_1)
         v_new_x, v_new_y, v_new_z = spherical_to_cartesian(v_new, theta_2, phi_2)
+
+
         particle.set_velocity(v_0_x, v_0_y, v_0_z)
         new_phonon.set_velocity(v_new_x, v_new_y, v_new_z)
 
         surface_anharmonic_final_step(particle, new_phonon, box, colours,
-                                      0, points, theta_1, phi_1, theta_2, phi_2)
+                                      0, points, theta_1, phi_1, theta_2,
+                                      phi_2)
         return
 
     x = omega_ratio
@@ -340,7 +346,6 @@ def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
 
     phi_0_after, theta_0_after = convert_particle_to_global(phi, theta, phi_1, theta_1)
     phi_new_after, theta_new_after = convert_particle_to_global(phi, theta, 2 * PI - phi_1, theta_2)
-
 
     v_0_x, v_0_y, v_0_z = spherical_to_cartesian(v_0, theta_0_after, phi_0_after)
     v_new_x, v_new_y, v_new_z = spherical_to_cartesian(v_new, theta_new_after, phi_new_after)

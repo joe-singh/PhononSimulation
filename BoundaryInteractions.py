@@ -8,6 +8,7 @@ Author: Jyotirmai (Joe) Singh 10/7/18
 from UtilityMethods import *
 import AnharmonicDecay
 
+
 def specular_scatter(particle, box):
     """
     Simulates specular scattering. 
@@ -31,6 +32,30 @@ def specular_scatter(particle, box):
     particle.set_velocity(vx, vy, vz)
 
 
+def get_lambertian_probability(particle):
+
+    # Convert frequency to GHz
+    f = particle.get_f()/1e9
+
+    return -2.98e-11 * (f**4) + 1.71e-8 * (f**3) - 2.47e-6 * (f**2) + 7.83e-4 * f + 5.88e-2
+
+
+def get_sad_probability(particle):
+
+    # Convert frequency to GHz
+    f = particle.get_f()/1e9
+
+    return 1.51e-14 * (f**5) + 9.27e-18 * (f**4) - 6.28e-15 * (f**3) + 2.01e-12 * (f**2) - 2.28e-10 * f + 6.02e-09
+
+
+def get_specular_probability(particle):
+
+    # Convert frequency to GHz
+    f = particle.get_f()/1e9
+
+    return 2.9e-13 * (f**4) + 3.1e-9 * (f**3) - 3.21e-6 * (f**2) - 2.03e-4 * f + 0.928
+
+
 def lambertian_scatter(particle, box):
     """
     Simulates scattering by a Lambertian process with 
@@ -45,6 +70,7 @@ def lambertian_scatter(particle, box):
     print("DIFFUSIVE SCATTER")
     adjust_boundary_velocity(particle, box, diffusive_angle, azimuthal_angle)
 
+
 def cylindrical_vol_and_sa(r, h):
     """
     Calculate volume and surface area of a cylinder. 
@@ -55,16 +81,17 @@ def cylindrical_vol_and_sa(r, h):
     """
     return PI * h * r ** 2, 2 * PI * (r * h + r ** 2)
 
+
 def convert_w_to_T(w):
     """
     Converts from angular frequency to temperature as in Eq (4) 
     in Klistner and Pohl. 
     
     :param w: Angular frequency, 2 * PI * v_dom where v_dom is the dominant frequency
-              Klistner and Pohl mention. 
+              Klistner and Pohl mention, Eq. 4 with the factor of 4.25
     :return: The temperature. 
     """
-    return (h * w) / (2 * PI * k_b)
+    return (h * w) / (2 * PI * k_b * 4.25)
 
 
 def diffusive_scatter_rate(T, particle, box):
@@ -75,59 +102,13 @@ def diffusive_scatter_rate(T, particle, box):
     Multiply by 100 to correct for cm vs m. 
     
     :param T: Temperature
+    :param particle: The particle
+    :param box: The box
     :return: The decay rate.
     """
     material = box.get_material()
     phonon_velocity = material.get_particle_velocity(particle.get_type())
     return 100 * (0.036452 * (T ** 2) + 0.216544) * phonon_velocity
-
-
-def get_diffusive_scatter_rates(particle, box):
-    """
-    Get scattering rates for cosine scattering and surface anharmonic decay. 
-    First get rate for surface decay using Trumpp and Eisenmenger. Major 
-    problem is that they have not defined the exact dimensions of their sample. 
-    
-    We assume a model of the form G_sad = <v>/4 [f_b * A_b / V + f_d * A_d / V] 
-    where G is the decay rate, A_d is the area covered with detectors and A_b is the bare area. f_b is 
-    the probability of anharmonic decay on the bare surface, f_d is the anharmonic
-    decay on the detector surface, and <v> is the average phonon speed. We want to find f_b, 
-    and we can fit their data which is a function of A_d / V so their y-intercept will give us
-    
-    y_0 = <v>/4 [f_b * A_b / V] but we do not know either A_b or A_d or the total surface area. They
-    do give the range of dimensions of their samples, which they say are cylindrical. The diameter is 
-    15 mm and length is 6-20 mm. We will assume here, for lack of better knowledge, a length of 13 mm.
-    
-    :param particle: The particle for which to calculate rates. 
-    :param box: The box in which the decay is taking place. 
-    :return The lambertian scattering and surface anharmonic decay rate. 
-    """
-    w = particle.get_w()
-    T = convert_w_to_T(w)
-    lambertian_rate = diffusive_scatter_rate(T, particle, box)
-
-    # Get the velocity in the material for the given phonon type.
-    v_avg = box.get_material().get_particle_velocity(particle.get_type())
-    vol, SA = cylindrical_vol_and_sa(7.5e-3, 13e-3)
-
-    # The intercept of the Trumpp Eisenmenger Line in Fig. 4, fitted to give 66.67 µsec
-    y_0 = 1/66.67e-6
-    f_SAD_280GHz = 4 * v_avg * y_0 * vol / SA
-
-    # Scales as w^5, multiply by 2PI to convert frequency to angular frequency.
-    f_SAD = (w / (2 * PI * 280e9)) ** 5 * f_SAD_280GHz
-
-    # Rate of surface anharmonic decay when no detector space present, y intercept of
-    # Fig. 4. Scales as w^5
-    SAD_rate = y_0 * (w / (2 * PI * 280e9)) ** 5
-
-    # Anharmonic decay only for longitudinal phonons.
-    if particle.get_type() != 3:
-        SAD_rate = 1e-70
-
-    assert lambertian_rate > 0.0 and SAD_rate > 0.0
-
-    return lambertian_rate, SAD_rate
 
 
 def boundary_interaction(particle, box, points, colours):
@@ -143,15 +124,31 @@ def boundary_interaction(particle, box, points, colours):
     """
 
     material = box.get_material()
-    lambertian_rate, sad_rate = get_diffusive_scatter_rates(particle, box)
 
-    r = np.random.rand()
-    t_lambert = -np.log(r)/lambertian_rate
-    t_sad = -np.log(r)/sad_rate
+    lambertian_prob = get_lambertian_probability(particle)
+    sad_prob = get_sad_probability(particle)
+    specular_prob = get_specular_probability(particle)
 
-    if t_lambert < t_sad:
-        lambertian_scatter(particle, box)
+    # Rescale probabilities to account for minor errors that mean
+    # probabilities do not sum exactly to 1
+    total_prob = lambertian_prob + sad_prob + specular_prob
+
+    lambertian_prob /= total_prob
+    sad_prob /= total_prob
+    specular_prob /= total_prob
+
+    if particle.get_type() != 3:
+        process = (np.random.choice(2, 1, p=[1-specular_prob, specular_prob]) + 1)[0]
+
     else:
+        process = (np.random.choice(3, 1, p=[lambertian_prob, specular_prob, sad_prob]) + 1)[0]
+
+    if process == 1:
+        lambertian_scatter(particle, box)
+    elif process == 2:
+        specular_scatter(particle, box)
+    else:
+        assert process == 3
         LTT_prob = material.get_LTT_ratio()
 
         if np.random.rand() < LTT_prob:

@@ -14,8 +14,10 @@ h = 6.63e-34
 k_b = 1.38e-23
 
 # Material specific constants from https://arxiv.org/pdf/1109.1193.pdf table 1.
-Germanium = Material.Material("Germanium", 3.67e-41, 6.43e-55, 5310, 3250, -0.732, -0.708, 0.376, 0.561, 5.32, 0.260)
-Silicon = Material.Material("Silicon", 2.43e-42, 7.41e-56, 9000, 5400, -0.429, -0.945, 0.524, 0.680, 2.33, 0.204)
+# Silicon debye frequency from https://lampx.tugraz.at/~hadley/ss1/phonons/table/dosdebye.html
+# Germanium debye frequency not correct! Completely random.
+Germanium = Material.Material("Germanium", 3.67e-41, 6.43e-55, 5310, 3250, -0.732, -0.708, 0.376, 0.561, 5.32, 0.260, 10e13)
+Silicon = Material.Material("Silicon", 2.43e-42, 7.41e-56, 9000, 5400, -0.429, -0.945, 0.524, 0.680, 2.33, 0.204, 13.8e13)
 
 # Characteristic Colours to represent different phonon types.
 # ST - Slow Transverse

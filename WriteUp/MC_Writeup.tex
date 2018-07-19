@@ -1,0 +1,183 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{enumitem}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\graphicspath{ {./} }
+\newcommand{\pic}[0]{\textbf{ATTACH PICTURES}}
+\newcommand{\DO}{\textbf{DO!!}}
+\newcommand{\sig}{On signature sheet.}
+\newcommand{\e}[1]{\cdot 10^{#1}}
+\newcommand{\vol}{\si{\volt}}
+\newcommand{\mv}{\si{m\volt}}
+\newcommand{\amp}{\si{\ampere}}
+\newcommand{\hz}{\si{\hertz}}
+\usepackage[colorlinks]{hyperref}
+\usepackage[utf8]{inputenc}
+
+\begin{document}
+\title{Phonon Physics and Monte Carlo Techniques in the SuperCDMS Experiment.}
+\author{Jason Koeller}
+\date{}
+\maketitle
+
+\section*{Basic Elements}
+Phonons are the quantised vibration modes of crystal lattices. They are described by the Hamiltonian \cite{1}
+
+\begin{equation}
+H = \sum_i \frac{p_i^2}{2m} + \sum_{i,j} \frac{m\omega^2}{2}(x_i - x_j)^2
+\end{equation}
+
+The aim of this work is to add to the CDMS Monte Carlo by integrating new diffusive propagation and anharmonic
+down conversion effects that occur at the boundaries of the crystal lattices in which the phonons propagate. 
+
+For the purposes of this Monte Carlo, we follow the earlier precedent from \cite{1} and treat the phonons as non
+interacting particles with specific decay and scattering properties in both the bulk and at the surfaces of the crystal. We
+will also be primarily concerned with a low temperature range where acoustic phonons can be modeled by the linear 
+dispersion relaion $\omega = vk$. The initial frequencies of the phonons are uniformly distributed from $80 \si{G\hertz}$ to $6.2 \si{T\hertz}$.
+This matches the limits set based on the sensitivity of the SuperCDMS experiment. Phonons lower than $80\si{G\hertz}$ will
+be not be detected by the TES sensing elements while the high scale is set by the upper bound of the Brillouin zone of
+all three modes of vibrations \cite{2}. This means the upper bound, and the initial distribution, for the three modes is  as follows
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|c|c|c|} \hline
+Mode & Upper Frequency [$\si{T\hertz}$] & Initial Proportion \\  \hline
+Longitudinal & $6.2$ & $10\%$ \\ \hline
+Fast Transverse & $3.7$ & $35\%$ \\ \hline
+Slow Transverse & $2.4$ & $55\%$\\ \hline
+\end{tabular}
+\end{center}
+\caption{The upper frequencies for the initial phonon distribution, and the initial phonon distribution. The initial distribution of phonon modes is as given in both \cite{1} and \cite{2}.}
+\end{table}
+
+Computationally, the Monte Carlo model follows a Discrete Event Simulation (DES). We opt for this because simulating discrete time steps of
+a given fixed small length is computationally inefficient as a large amount of simulated steps will not be of interest. Instead, we simulate only 
+events of interest. To determine which event occurs next, we first calculate a characteristic time step for each process given by 
+$\tau = -\frac{ln(r)}{R}$ where $r$ is randomly distributed from $0$ to $1$ and $R$ is the rate of the process in question. In addition, we 
+calculate a time associated with hitting the boundary. This time is calculated assuming the phonon travels at its current velocity and thus a simple
+calculation is used to find the distance to the closest point on the boundary in the direction of the velocity vector, and then $\tau = \frac{l}{v}$
+where $l$ is the calculated distance and $v$ is the current phonon speed. Whichever time is the smallest from these is the process that 
+is chosen to occur next, and the global time of the simulation is incremented by that much. The rest of this note will address exactly what processes
+we simulate in bulk and on the boundary and how these rates are calculated.
+
+\section*{Bulk Interactions}
+
+The bulk interactions are dominated by two main processes. These are isotopic scattering and bulk anharmonic decay. 
+
+\subsection*{Isotopic Scattering}
+As explained in \cite{1}, phonons scatter off mass defects in the crystal. The rate for this process is given by
+\begin{equation}
+\Gamma_I = B\nu^4
+\end{equation}
+
+Where $B = 2.43 \times 10^{-42}$ in Silicon. For the purposes of the simulation, this process involves the incoming phonon spontaneously 
+changing its propagation direction in a uniform manner. The new uniform velocity is picked in spherical coordinates, with the azimuthal angle a
+uniform choice between $0$ and $2\pi$ and the polar angle chosen from a $\sin(\theta)$ distribution for $\theta \in [0, \pi]$.
+
+\subsection*{Anharmonic Decay}
+A second, weaker process in the bulk decay spectrum is anharmonic decay, through which a phonon will down convert to two lower energy
+phonons. This occurs only for longitudinal phonons, and the possible decay modes are either $L\rightarrow T+T$ or $L\rightarrow T+L$.
+
+\subsubsection*{$L\rightarrow L'+T$:}
+The decay rate for this process is given by \cite{3}
+
+\begin{equation}
+\Gamma_{L\rightarrow L'T} \sim \frac{1}{x^2}(1-x^2)^2\left[(1+x)^2 - \delta^2 (1-x)^2\right]\left[1 + x^2 - \delta^2(1-x)^2\right]^2
+\end{equation}
+
+Where $x = \frac{\omega_{L'}}{\omega_L}$ is the ratio of the final longitudinal frequency to the initial, $\delta = \frac{v_l}{v_t}$ is the ratio of
+the longitudinal phonon velocity in the crystal to transverse phonon velocity and we must have that $\frac{\delta - 1}{\delta + 1} < x < 1$. This 
+distribution is used to sample the frequency of the produced longitudinal phonon, and then the transverse phonon frequency is simply set to be
+the difference of the initial frequency and the final longitudinal frequency to respect conservation of energy. 
+
+4-momentum conservation also gives us the angles relative to the initial velocity vector of the final phonons:
+
+\begin{equation}
+\cos(\theta_{L'}) = \frac{1 + x^2 - \delta^2(1-x)^2}{2x} 
+\end{equation}
+\begin{equation}
+\cos(\theta_T) = \frac{1 - x^2 + \delta^2(1-x)^2}{2\delta(1-x)}
+\end{equation}
+
+We plot the (unnormalised) probability distributions for this process below. 
+
+\begin{figure}[!h]
+\begin{center}
+\includegraphics[scale=.5]{./bulk_anharmonic_pdfs.png}
+\end{center}
+\caption{The probability densities (unnormalised) of the L (blue) and T(green) phonons of the LLT mode and of the T phonon in the LTT mode (red).}
+\end{figure}
+
+\subsubsection*{$L\rightarrow T + T$:}
+The decay rate for this process is also given in \cite{3}:
+
+\begin{equation}
+\Gamma_{L\rightarrow TT} \sim (A + B\delta x - Bx^2)^2 + \left[Cx(\delta - x) - \frac{D}{\delta - x}\left(x - \delta - \frac{1-\delta^2}{4x}\right)\right]
+\end{equation}
+
+Where the constant $A, B, C, D$ are related to the properties of the crystal and can be found in both \cite{2} and \cite{3}. Here, the limits
+for the pdf support are $\frac{\delta - 1}{2} \leq x \leq \frac{\delta + 1}{2}$, and the variable itself is now defined as $x = \delta\frac{\omega}
+{\omega_0}$. The corresponding angular equations can be obtained once again from
+4-momentum conservation 
+
+\begin{equation}
+\cos(\theta_1) = \frac{1 - \delta^2 + 2x\delta}{2x}
+\end{equation}
+\begin{equation}
+\cos(\theta_2) = \frac{1 - x\cos(\theta_1)}{d - x}
+\end{equation}
+
+These equations are slightly different to those from \cite{1}. The equations presented there are problematic since they are not strictly bounded
+by $\pm 1$. The $\cos(\theta)$ distributions calculated here are shown below, adjusted for the scaling of the $x$ variable so that the distributions
+are now functions of just the frequency ratio without the scaling factor.
+
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=.5]{./LTT_cos_theta.png}
+\caption{The distribution of the cosine of the scattering angle for the LTT case.}
+\end{figure}
+
+As expected, the distributions are very symmetric since both outputs are transverse phonons and thus neither should have a privileged position with 
+respect to the other. We have also put the plots from \cite{2} for comparison. The bounds are determined by those for the LTT support and are
+the same as those for the red LTT plot in figure 1 above. Note how the previous equations are not bounded properly in this range and 
+demonstrates an asymptote at the point where $\frac{\omega}{\omega_0} = \frac{1}{d} = 61$ for silicon.
+
+\pagebreak
+Finally, we present (normalised) distributions of the scattering angles of phonons from all interactions:
+
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=.6]{scattering_angle_distributions.png}
+\end{figure}
+
+The LLT distributions match those given in \cite{1}, which serves as a check on our work. The LTT distributions are virtually identical, as expected,
+and almost appear to match those shown before, which is strange given the differences in the cosine formulas quoted there from ours. 
+
+\section*{Boundary Interactions}
+The key new addition to the Monte Carlo are the interactions at the boundary. Recall that we use DES to simulate our Monte Carlo. If a step terminates
+on the boundary then the next step will not choose from the rates for bulk processes but for the following boundary processes:
+
+\begin{enumerate}
+\item Specular scattering
+\item Lambertian scattering
+\item Surface anharmonic decay (SAD)
+\end{enumerate}
+
+
+
+\pagebreak
+\begin{thebibliography}{99} 
+\bibitem[1]{1}
+Leman, S.W. Rev.Sci.Instrum. 83 (2012) 091101 
+
+\bibitem[2]{2}
+Optimizing the design and analysis of cryogenic semiconductor dark matter detectors for maximum sensitivity - Pyle, Matt Christopher FERMILAB-THESIS-2012-53
+
+\bibitem[3]{3}
+Tamura, S. Phys. Rev. B 31, 4 (1985)
+Optimizing the design and analysis of cryogenic semiconductor dark matter detectors for maximum sensitivity - Pyle, Matt Christopher FERMILAB-THESIS-2012-53
+\end{thebibliography}
+\end{document}

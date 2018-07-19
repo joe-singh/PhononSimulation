@@ -6,7 +6,7 @@ Author: Jyotirmai (Joe) Singh 10/7/18
 class Material:
 
     def __init__(self, name, isotope_scatter_rate, anharmonic_decay_rate, v_longitudinal, v_transverse,
-                 Beta, Gamma, Lambda, Mu, density, LLT_ratio):
+                 Beta, Gamma, Lambda, Mu, density, LLT_ratio, f_debye):
 
         self._name = name
         self._isotope_scatter_rate = isotope_scatter_rate
@@ -20,6 +20,7 @@ class Material:
         self._density = density
         self._LLT_ratio = LLT_ratio
         self._LTT_ratio = 1 - self._LLT_ratio
+        self._f_debye = f_debye
 
     def get_particle_velocity(self, particle_type):
 
@@ -70,3 +71,6 @@ class Material:
 
     def get_density(self):
         return self._density
+
+    def get_f_debye(self):
+        return self._f_debye
