@@ -50,8 +50,14 @@ def simulate_step(frames, box, points, colours, title):
     :return: None
     """
 
-    # Pick random particle from box
-    particle_index = np.random.randint(0, box.get_num_particles())
+    # Pick random particle from box; if box is empty end simulation all phonons are dead.
+    particle_list = list(box.particles.keys())
+
+    if not particle_list:
+        print("ALL PHONONS BELOW ENERGY THRESHOLD OR ABSORBED, ENDING SIMULATION")
+        os._exit(0)
+
+    particle_index = np.random.choice(np.array(list(box.particles.keys())))
     particle = box.get_particle(particle_index)
 
     particle.get_info()
@@ -113,9 +119,11 @@ def simulate_step(frames, box, points, colours, title):
     Delta_V = get_magnitude(particle.get_vx(), particle.get_vy(), particle.get_vz()) \
               - box.get_material().get_particle_velocity(particle.get_type())
 
-    if abs(Delta_V) > 1e-6:
+    # If particle survives simulation step, ensure velocities are conserved.
+    if not particle.is_removed() and abs(Delta_V) > 1e-6:
         print("Velocities not being conserved properly! Delta_V: %f" % Delta_V)
         print("Original particle type is: %f" % particle.get_type())
+        print("Particle name: " + particle.get_name())
         os._exit(1)
 
     # Final check to make sure no particle has jumped outside.
@@ -129,23 +137,24 @@ def simulate_step(frames, box, points, colours, title):
     return
 
 
-def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
+def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_steps=4000):
     """
     The main method that starts the whole process. Initialises box with 
     all phonons and creates matplotlib animation.
     
-    :param num_particles: The number of initial phonons.
+    :param num_particles: The number of initial phonons
     :param box_width: The width of the box (max x-coordinate)
     :param box_height: The height of the box (max y-coordinate)
     :param box_depth: The depth of the box (max z-coordinate)
-    :param num_steps: The number of steps for the animation. 
+    :param coverage_ratio: The amount of surface area covered by detectors
+    :param num_steps: The number of steps for the animation 
     :return: None
     """
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    particle_array = []
+    particle_dict = {}
     colour_dict = {}
 
     material = Silicon
@@ -173,10 +182,11 @@ def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
 
         ptcle = Particle(random_x, random_y, random_z, random_vx, random_vy, random_vz,
                          "Particle " + str(i), rand_type, random_freq)
-        particle_array.append(ptcle)
+
+        particle_dict[i] = ptcle
 
     # Box with initial starting configuration. Material parameters defined in UtilityMethods.py
-    box = Box(material, box_width, box_height, box_depth, particle_array, colour_dict)
+    box = Box(material, box_width, box_height, box_depth, coverage_ratio, particle_dict, colour_dict)
 
     points = ax.scatter(box.get_x_array(), box.get_y_array(), box.get_z_array(),
                         facecolors=get_colour_array(colour_dict.values()))
@@ -201,4 +211,4 @@ def run(num_particles, box_width, box_height, box_depth, num_steps=4000):
     plt.grid()
     plt.show()
 
-run(50, 1e-7, 1e-7, 1e-7, 4000)
+run(100, 1, 1, 1, 0.2, 4000)

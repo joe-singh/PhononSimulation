@@ -4,8 +4,10 @@ Particle class to simulate phonon particles.
 Author: Jyotirmai (Joe) Singh 26/6/18
 """
 import numpy as np
-import os
 PI = np.pi
+h = 6.63e-34
+hbar = h/(2 * PI)
+
 
 
 def calculate_k_vector(vx, vy, vz, w):
@@ -36,7 +38,7 @@ def calculate_k_vector(vx, vy, vz, w):
 class Particle:
     """Particle class"""
 
-    def __init__(self, x, y, z, vx, vy, vz, name, type, frequency, t=0, event_times=[]):
+    def __init__(self, x, y, z, vx, vy, vz, name, type, frequency, t=0, event_times=[], removed=False):
         """
         Initialiser method.
         
@@ -68,6 +70,7 @@ class Particle:
         self.freq = frequency
         self.w = 2 * PI * self.freq
         self.k = calculate_k_vector(vx, vy, vz, self.w)
+        self.removed = removed
 
     def get_name(self):
         """
@@ -299,6 +302,9 @@ class Particle:
         """
         self.event_times.append(event)
 
+    def get_energy(self):
+        return hbar * self.w
+
     def get_info(self):
         """
         Prints a readout of the particle's current state, giving position and
@@ -307,6 +313,12 @@ class Particle:
         print(self.name + "at (" + str(self.x) + ", " + str(self.y) + ", " + str(self.z) + ")"
               + " with speed: (" + str(self.vx) + ", " + str(self.vy) + ", " +str(self.vz) +
               ") and frequency %f" % self.freq)
+
+    def remove(self):
+        self.removed = True
+
+    def is_removed(self):
+        return self.removed
 
     def advance(self, t):
         """

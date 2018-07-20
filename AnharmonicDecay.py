@@ -109,6 +109,16 @@ def anharmonic_final_step(particle, box, t, colours, points, vx=0, vy=0, vz=0, n
     if new_particle:
         box.add_particle(particle)
         colours[box.get_num_particles()-1] = particle.get_type()
+        x_points = box.get_x_array()
+        y_points = box.get_y_array()
+        z_points = box.get_z_array()
+
+        data = (x_points, y_points, z_points)
+        points._offsets3d = data
+
+        colour_array = get_colour_array(box.colours.values())
+        points._facecolor3d = colour_array
+        points._edgecolor3d = colour_array
     else:
         colours[box.get_particle_no(particle.get_name())] = particle.get_type()
 
@@ -315,6 +325,13 @@ def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
     particle.set_w(w_0_after)
     new_phonon.set_w(w_new_after)
 
+    # Energy Gap defined in Utility Methods.
+    if particle.get_energy() < 2 * ENERGY_GAP:
+        remove_particle(particle, box, points)
+        return
+    if new_phonon.get_energy() < 2 * ENERGY_GAP:
+        remove_particle(new_phonon, box, points)
+
     v_0 = V_LONGITUDINAL
     v_new = V_TRANSVERSE
 
@@ -325,10 +342,8 @@ def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
     # velocities and end this.
     if boundary:
 
-
         v_0_x, v_0_y, v_0_z = spherical_to_cartesian(v_0, theta_1, phi_1)
         v_new_x, v_new_y, v_new_z = spherical_to_cartesian(v_new, theta_2, phi_2)
-
 
         particle.set_velocity(v_0_x, v_0_y, v_0_z)
         new_phonon.set_velocity(v_new_x, v_new_y, v_new_z)

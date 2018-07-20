@@ -123,6 +123,29 @@ def boundary_interaction(particle, box, points, colours):
     :param colours: The colour configuration of the phonons
     """
 
+    # First check if we are going to potentially be absorbed by the phonon detectors.
+
+    if np.random.rand() < box.get_coverage():
+        # Particle incident on aluminium
+        if np.random.rand() < box.get_material().get_sensor_absorb_probability():
+            # Particle absorbed by aluminium
+            remove_particle(particle, box, points)
+            #box.remove_particle(particle)
+
+            #x_points = box.get_x_array()
+            #y_points = box.get_y_array()
+            #z_points = box.get_z_array()
+
+            #data = (x_points, y_points, z_points)
+            #points._offsets3d = data
+
+            #colour_array = get_colour_array(box.colours.values())
+            #points._facecolor3d = colour_array
+            #points._edgecolor3d = colour_array
+            return
+
+    # If no absorption, continue the process.
+
     material = box.get_material()
 
     lambertian_prob = get_lambertian_probability(particle)

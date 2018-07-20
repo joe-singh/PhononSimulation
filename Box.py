@@ -9,7 +9,7 @@ import re
 
 class Box:
 
-    def __init__(self, material, width, height, depth, particles=[], colours={}):
+    def __init__(self, material, width, height, depth, coverage_ratio, particles={}, colours={}):
         """
         Initialiser method. 
         
@@ -26,6 +26,7 @@ class Box:
         self.particles = particles
         self.colours = colours
         self.depth = depth
+        self.coverage = coverage_ratio
         self.corners = [[0, 0, 0], [0, self.height, 0],
                         [self.width, 0, 0], [self.width, self.height, 0],
                         [0, 0, self.depth], [0, self.height, self.depth],
@@ -40,8 +41,8 @@ class Box:
         """
         try:
             return self.particles[i]
-        except IndexError:
-            print("Incorrect index, check number is between 0 and n-1, n = number of particles.")
+        except KeyError:
+            print("Incorrect Key, check number is between 0 and n-1, n = number of particles.")
 
     def get_width(self):
         """
@@ -65,19 +66,19 @@ class Box:
         """
         :return: An array where the ith entry is the x coordinate of the ith particle.  
         """
-        return np.array([particle.get_x() for particle in self.particles])
+        return np.array([self.particles[particle].get_x() for particle in self.particles])
 
     def get_y_array(self):
         """
         :return: An array where the ith entry is the y coordinate of the ith particle.  
         """
-        return np.array([particle.get_y() for particle in self.particles])
+        return np.array([self.particles[particle].get_y() for particle in self.particles])
 
     def get_z_array(self):
         """
         :return: An array where the ith entry is the z coordinate of the ith particle.  
         """
-        return np.array([particle.get_z() for particle in self.particles])
+        return np.array([self.particles[particle].get_z() for particle in self.particles])
 
     def get_corners(self):
         """
@@ -111,7 +112,8 @@ class Box:
         
         :param particle: Particle to be added.
         """
-        self.particles.append(particle)
+        num_particles = self.get_num_particles()
+        self.particles[num_particles] = particle
 
     def update_time(self, time):
         """
@@ -120,11 +122,26 @@ class Box:
         
         :param time: Time to update particles with. 
         """
-        for particle in self.particles:
-            particle.set_t(time)
+        for particle_name in self.particles:
+            self.particles[particle_name].set_t(time)
 
     def get_material(self):
         """
         Get material of box. 
         """
         return self.material
+
+    def get_coverage(self):
+        """
+        Get amount of surface area covered by detector film
+        """
+        return self.coverage
+
+    def remove_particle(self, particle):
+
+        particle_index = self.get_particle_no(particle.get_name())
+        self.particles[particle_index].remove()
+        del self.particles[particle_index]
+        del self.colours[particle_index]
+
+        print("Particle " + particle.get_name() + " removed at time " + str(particle.get_t()))

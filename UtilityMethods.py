@@ -11,13 +11,19 @@ import Material
 
 PI = np.pi
 h = 6.63e-34
+hbar = h/(2 * PI)
 k_b = 1.38e-23
+# Al superconducting gap, in Joules,from
+# http://www.knowledgedoor.com/2/elements_handbook/superconducting_energy_gap.html
+ENERGY_GAP = 5.447400321 * 10e-23
 
 # Material specific constants from https://arxiv.org/pdf/1109.1193.pdf table 1.
 # Silicon debye frequency from https://lampx.tugraz.at/~hadley/ss1/phonons/table/dosdebye.html
 # Germanium debye frequency not correct! Completely random.
-Germanium = Material.Material("Germanium", 3.67e-41, 6.43e-55, 5310, 3250, -0.732, -0.708, 0.376, 0.561, 5.32, 0.260, 10e13)
-Silicon = Material.Material("Silicon", 2.43e-42, 7.41e-56, 9000, 5400, -0.429, -0.945, 0.524, 0.680, 2.33, 0.204, 13.8e13)
+Germanium = Material.Material("Germanium", 3.67e-41, 6.43e-55, 5310, 3250, -0.732, -0.708, 0.376, 0.561,
+                              5.32, 0.260, 0.5)
+Silicon = Material.Material("Silicon", 2.43e-42, 7.41e-56, 9000, 5400, -0.429, -0.945, 0.524, 0.680,
+                            2.33, 0.204, 0.0)
 
 # Characteristic Colours to represent different phonon types.
 # ST - Slow Transverse
@@ -109,7 +115,8 @@ def check_no_particle_outside_box(box):
     width = box.get_width()
     height = box.get_height()
     depth = box.get_depth()
-    for particle in box.particles:
+    for ptcle in box.particles:
+        particle = box.particles[ptcle]
         x = particle.get_x()
         y = particle.get_y()
         z = particle.get_z()
@@ -391,3 +398,18 @@ def get_cos_angle():
     # so x = arcsin(F) where F in range 0 to 1.
 
     return np.arcsin(np.random.rand())
+
+
+def remove_particle(particle, box, points):
+    box.remove_particle(particle)
+
+    x_points = box.get_x_array()
+    y_points = box.get_y_array()
+    z_points = box.get_z_array()
+
+    data = (x_points, y_points, z_points)
+    points._offsets3d = data
+
+    colour_array = get_colour_array(box.colours.values())
+    points._facecolor3d = colour_array
+    points._edgecolor3d = colour_array
