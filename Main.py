@@ -211,4 +211,4 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
     plt.grid()
     plt.show()
 
-run(100, 1, 1, 1, 0.2, 4000)
+run(100, 1e-7, 1e-7, 1e-7, 0.2, 4000)

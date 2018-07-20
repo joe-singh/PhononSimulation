@@ -23,7 +23,7 @@ ENERGY_GAP = 5.447400321 * 10e-23
 Germanium = Material.Material("Germanium", 3.67e-41, 6.43e-55, 5310, 3250, -0.732, -0.708, 0.376, 0.561,
                               5.32, 0.260, 0.5)
 Silicon = Material.Material("Silicon", 2.43e-42, 7.41e-56, 9000, 5400, -0.429, -0.945, 0.524, 0.680,
-                            2.33, 0.204, 0.0)
+                            2.33, 0.204, 0.5)
 
 # Characteristic Colours to represent different phonon types.
 # ST - Slow Transverse
