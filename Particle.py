@@ -38,7 +38,8 @@ def calculate_k_vector(vx, vy, vz, w):
 class Particle:
     """Particle class"""
 
-    def __init__(self, x, y, z, vx, vy, vz, name, type, frequency, t=0, event_times=[], removed=False):
+    def __init__(self, x, y, z, vx, vy, vz, name, type, frequency, t=0, event_times=[], removed=False,
+                 track=False):
         """
         Initialiser method.
         
@@ -71,6 +72,7 @@ class Particle:
         self.w = 2 * PI * self.freq
         self.k = calculate_k_vector(vx, vy, vz, self.w)
         self.removed = removed
+        self.track = track
 
     def get_name(self):
         """
@@ -319,6 +321,12 @@ class Particle:
 
     def is_removed(self):
         return self.removed
+
+    def is_tracked(self):
+        return self.track
+
+    def start_tracking(self):
+        self.track = True
 
     def advance(self, t):
         """

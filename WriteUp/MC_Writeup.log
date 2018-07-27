@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  17 JUL 2018 20:56
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  27 JUL 2018 14:47
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1009,46 +1009,79 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
  [1
 
 {/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-<./bulk_anharmonic_pdfs.png, id=33, 782.925pt x 376.40625pt>
+<./bulk_anharmonic_pdfs.png, id=34, 782.925pt x 376.40625pt>
 File: ./bulk_anharmonic_pdfs.png Graphic file (type png)
 
 <use ./bulk_anharmonic_pdfs.png>
-Package pdftex.def Info: ./bulk_anharmonic_pdfs.png used on input line 109.
+Package pdftex.def Info: ./bulk_anharmonic_pdfs.png used on input line 116.
 (pdftex.def)             Requested size: 391.46155pt x 188.20265pt.
- [2 <./bulk_anharmonic_pdfs.png>]
-<./LTT_cos_theta.png, id=57, 797.98125pt x 377.41pt>
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+<./LTT_cos_theta.png, id=40, 797.98125pt x 377.41pt>
 File: ./LTT_cos_theta.png Graphic file (type png)
  <use ./LTT_cos_theta.png>
-Package pdftex.def Info: ./LTT_cos_theta.png used on input line 139.
+Package pdftex.def Info: ./LTT_cos_theta.png used on input line 146.
 (pdftex.def)             Requested size: 398.98964pt x 188.70453pt.
 
-[3 <./LTT_cos_theta.png>]
-<scattering_angle_distributions.png, id=70, 782.925pt x 376.40625pt>
+[2] [3 <./bulk_anharmonic_pdfs.png> <./LTT_cos_theta.png>]
+<scattering_angle_distributions.png, id=72, 782.925pt x 376.40625pt>
 File: scattering_angle_distributions.png Graphic file (type png)
 
 <use scattering_angle_distributions.png>
 Package pdftex.def Info: scattering_angle_distributions.png used on input line 
-153.
+160.
 (pdftex.def)             Requested size: 469.75862pt x 225.84547pt.
- [4 <./scattering_angle_distributions.png>]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 181.
- [5]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 181.
+
+<Total_Diffusive.png, id=78, 925.056pt x 486.3771pt>
+File: Total_Diffusive.png Graphic file (type png)
+ <use Total_Diffusive.png>
+Package pdftex.def Info: Total_Diffusive.png used on input line 192.
+(pdftex.def)             Requested size: 555.03789pt x 291.8285pt.
+
+Overfull \hbox (13.01288pt too wide) in paragraph at lines 192--194
+ [][] 
+ []
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[4 <./scattering_angle_distributions.png>] [5 <./Total_Diffusive.png>]
+<All_Rates.png, id=106, 925.056pt x 486.3771pt>
+File: All_Rates.png Graphic file (type png)
+ <use All_Rates.png>
+Package pdftex.def Info: All_Rates.png used on input line 280.
+(pdftex.def)             Requested size: 555.03789pt x 291.8285pt.
+
+Overfull \hbox (13.01288pt too wide) in paragraph at lines 280--281
+ [][] 
+ []
+
+[6 <./All_Rates.png>]
+Overfull \hbox (18.18658pt too wide) in paragraph at lines 291--297
+ [][] 
+ []
+
+[7]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 338.
+ [8]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 338.
  (./MC_Writeup.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 181.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 181.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 338.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 338.
 Package rerunfilecheck Info: File `MC_Writeup.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 181.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 338.
  ) 
 Here is how much of TeX's memory you used:
- 15597 strings out of 493089
- 301455 string characters out of 6134842
- 344528 words of memory out of 5000000
- 18908 multiletter control sequences out of 15000+600000
+ 15633 strings out of 493089
+ 301897 string characters out of 6134842
+ 346730 words of memory out of 5000000
+ 18921 multiletter control sequences out of 15000+600000
  14350 words of font info for 56 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 39i,16n,39p,10398b,723s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 39i,16n,39p,10398b,763s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
 </usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><
@@ -1062,11 +1095,12 @@ texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/tex
 live/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texliv
 e/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive
 /2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/2
-015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb>
-Output written on MC_Writeup.pdf (5 pages, 239788 bytes).
+015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/201
+5/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
+Output written on MC_Writeup.pdf (8 pages, 367901 bytes).
 PDF statistics:
- 139 PDF objects out of 1000 (max. 8388607)
- 108 compressed objects within 2 object streams
- 31 named destinations out of 1000 (max. 500000)
- 16 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 194 PDF objects out of 1000 (max. 8388607)
+ 155 compressed objects within 2 object streams
+ 52 named destinations out of 1000 (max. 500000)
+ 26 words of extra memory for PDF output out of 10000 (max. 10000000)
 

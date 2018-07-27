@@ -10,7 +10,7 @@
 \newcommand{\pic}[0]{\textbf{ATTACH PICTURES}}
 \newcommand{\DO}{\textbf{DO!!}}
 \newcommand{\sig}{On signature sheet.}
-\newcommand{\e}[1]{\cdot 10^{#1}}
+\newcommand{\e}[1]{\times 10^{#1}}
 \newcommand{\vol}{\si{\volt}}
 \newcommand{\mv}{\si{m\volt}}
 \newcommand{\amp}{\si{\ampere}}
@@ -19,8 +19,8 @@
 \usepackage[utf8]{inputenc}
 
 \begin{document}
-\title{Phonon Physics and Monte Carlo Techniques in the SuperCDMS Experiment.}
-\author{Jason Koeller}
+\title{Phonon Surface Physics and Monte Carlo Techniques in the SuperCDMS Experiment.}
+\author{Jyotirmai Singh}
 \date{}
 \maketitle
 
@@ -37,10 +37,10 @@ down conversion effects that occur at the boundaries of the crystal lattices in 
 For the purposes of this Monte Carlo, we follow the earlier precedent from \cite{1} and treat the phonons as non
 interacting particles with specific decay and scattering properties in both the bulk and at the surfaces of the crystal. We
 will also be primarily concerned with a low temperature range where acoustic phonons can be modeled by the linear 
-dispersion relaion $\omega = vk$. The initial frequencies of the phonons are uniformly distributed from $80 \si{G\hertz}$ to $6.2 \si{T\hertz}$.
+dispersion relaion $\omega = vk$. The initial frequencies of the phonons are uniformly distributed from $80 \si{G\hertz}$ to $524 \si{G\hertz}$.
 This matches the limits set based on the sensitivity of the SuperCDMS experiment. Phonons lower than $80\si{G\hertz}$ will
-be not be detected by the TES sensing elements while the high scale is set by the upper bound of the Brillouin zone of
-all three modes of vibrations \cite{2}. This means the upper bound, and the initial distribution, for the three modes is  as follows
+be not be detected by the TES sensing elements \cite{2} while the high scale is set by considerations relating to surface decay effects that will be
+mentioned later. This means the upper bound, and the initial distribution, for the three modes is as follows
 \begin{table}[!h]
 \begin{center}
 \begin{tabular}{|c|c|c|} \hline
@@ -60,7 +60,7 @@ $\tau = -\frac{ln(r)}{R}$ where $r$ is randomly distributed from $0$ to $1$ and 
 calculate a time associated with hitting the boundary. This time is calculated assuming the phonon travels at its current velocity and thus a simple
 calculation is used to find the distance to the closest point on the boundary in the direction of the velocity vector, and then $\tau = \frac{l}{v}$
 where $l$ is the calculated distance and $v$ is the current phonon speed. Whichever time is the smallest from these is the process that 
-is chosen to occur next, and the global time of the simulation is incremented by that much. The rest of this note will address exactly what processes
+is chosen to occur next, and the  phonon's time value is incremented by that smallest time. The rest of this note will address exactly what processes
 we simulate in bulk and on the boundary and how these rates are calculated.
 
 \section*{Bulk Interactions}
@@ -70,7 +70,7 @@ The bulk interactions are dominated by two main processes. These are isotopic sc
 \subsection*{Isotopic Scattering}
 As explained in \cite{1}, phonons scatter off mass defects in the crystal. The rate for this process is given by
 \begin{equation}
-\Gamma_I = B\nu^4
+\Gamma_I = B\nu^4\label{eq:2}
 \end{equation}
 
 Where $B = 2.43 \times 10^{-42}$ in Silicon. For the purposes of the simulation, this process involves the incoming phonon spontaneously 
@@ -80,6 +80,13 @@ uniform choice between $0$ and $2\pi$ and the polar angle chosen from a $\sin(\t
 \subsection*{Anharmonic Decay}
 A second, weaker process in the bulk decay spectrum is anharmonic decay, through which a phonon will down convert to two lower energy
 phonons. This occurs only for longitudinal phonons, and the possible decay modes are either $L\rightarrow T+T$ or $L\rightarrow T+L$.
+The rate of this interaction is given by 
+
+\begin{equation}
+\Gamma_{A} = A\nu^5\label{eq:3}
+\end{equation}
+
+Where $A = 7.41 \times 10^{-56} \ \si{\second^4}$ for Silicon \cite{1}.
 
 \subsubsection*{$L\rightarrow L'+T$:}
 The decay rate for this process is given by \cite{3}
@@ -143,7 +150,7 @@ are now functions of just the frequency ratio without the scaling factor.
 As expected, the distributions are very symmetric since both outputs are transverse phonons and thus neither should have a privileged position with 
 respect to the other. We have also put the plots from \cite{2} for comparison. The bounds are determined by those for the LTT support and are
 the same as those for the red LTT plot in figure 1 above. Note how the previous equations are not bounded properly in this range and 
-demonstrates an asymptote at the point where $\frac{\omega}{\omega_0} = \frac{1}{d} = 61$ for silicon.
+demonstrates an asymptote at the point where $\frac{\omega}{\omega_0} = \frac{1}{d} = 0.61$ for silicon.
 
 \pagebreak
 Finally, we present (normalised) distributions of the scattering angles of phonons from all interactions:
@@ -166,7 +173,150 @@ on the boundary then the next step will not choose from the rates for bulk proce
 \item Surface anharmonic decay (SAD)
 \end{enumerate}
 
+\subsection*{Calculation of Boundary Interaction Rates}
 
+The calculation of boundary interaction rates was a key new focus of this work. First we present a summary of the calculation process and then 
+the actual rates for all 3 interactions themselves. First, we obtain the total scattering rate on the boundary. Klitsner and Pohl studied phonons
+in Silicon extensively, including measuring diffusive scattering rates as a function of the phonon temperature \cite{4}. We adopt the same 
+conversion between phonon frequency and temperature that they do:
+
+\begin{equation}
+\nu = 4.25 \frac{k_b}{h} T = (90 \ \si{G\hertz \ \kelvin^{-1}})\label{eq:10}
+\end{equation}
+
+Fig 1. in \cite{4} illustrates their measurement of the total scattering rate, from which we can subtract the total bulk rate -- given by
+adding \eqref{eq:2} and \eqref{eq:3}. Figure 3 illustrates this total surface rate.
+
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=.6]{Total_Diffusive.png}
+\caption{The total diffusive surface scattering rate, calculated by subtracting the total bulk rate - including bulk isotopic and anharmonic 
+interactions - from the total scattering rate. Red is an applied fit to the total surface scattering rate.}
+\end{figure}
+
+
+Having obtained the total diffusive rate, we now turn it into a probability by dividing this rate by the diffusive scattering rate expected
+for a rough surface which would demonstrate maximal diffusive scattering, which is provided in \cite{4} as well. 
+
+We can also use the total diffusive rate to calculate the rate for the Surface Anharmonic Decay process. We model the total
+rate as a sum of that on the bare surface and that on the covered surface:
+
+\begin{equation}
+\Gamma_T = \Gamma_B + \Gamma_C 
+\end{equation}
+
+We can model these terms as follows:
+
+\begin{equation}
+\Gamma_C = \frac{K_C}{t_R}\frac{A_C}{A_T}
+\end{equation}
+
+Where $K_C$ is the probability of an anharmonic decay on the covered surface, $t_R$ is the reverbration time for the phonon and $A_C$ and $A_T$
+are covered surface area and total surface area. The reverbration time can be calculated using the Sabine equation, which gives the average scattering
+length of the phonons assuming ballistic propagation:
+
+\begin{equation}
+t_R = \frac{\langle c \rangle}{l_{av}} = \frac{c A_T}{4V}
+\end{equation}
+
+Where $\langle c \rangle$ is the average phonon speed in the material across all modes, which for Si is $5.93 \times 10^{5} \ \si{c\meter
+\second^{-1}}$ \cite{4} 
+and $V$ is the total sample volume.
+
+Which means that 
+
+\begin{equation}
+\Gamma_C = K_C \frac{\langle c \rangle}{\frac{4V}{A_T}}\frac{A_C}{A_T} = K_C \frac{\langle c \rangle A_C}{4V}
+\end{equation}
+ 
+ By the same logic we can derive the rate for the uncovered boundary
+ 
+ \begin{equation}
+ \Gamma_B = K_B \frac{\langle c \rangle A_B}{4V}
+ \end{equation}
+ 
+ Which gives a total surface anharmonic decay rate of 
+ 
+ \begin{equation}
+ \Gamma_{SAD} = K_C \frac{\langle c \rangle A_C}{4V} + K_B \frac{\langle c \rangle A_B}{4V}
+ \end{equation}
+ 
+ Or, using the fact that $A_T = A_B + A_C$ to eliminate $A_B$
+ 
+ \begin{equation}
+ \Gamma_{SAD} = K_B \frac{\langle c \rangle A_T}{4V} + (K_C - K_B)\frac{\langle c \rangle}{4} \left(\frac{A_C}{V}\right)
+ \end{equation}
+ 
+ We have put it in this form to be able to form a direct comparison with the work of Trumpp and Eisenmenger, who studied the reverbration 
+ times of phonons as a function of the ratio of the covered surface area to total volume $\left(\frac{F_C}{V}\right)$ \cite{4}. Our goal is to determine
+ $K_B$, the probability of a decay on the bare surface. Furthermore, in the 
+ above expression we recognise $\frac{F_T}{4V}$ as the inverse of the mean free length, which we denote $\Lambda_F$.  Trumpp and Eisenmenger 
+ note that the mean free path for a ratio of 0.1 is $20\si{c\meter}$. There is a subtlety here in that our mean free path is the distance until 
+ the first impact, while for Trumpp and Eisenmenger the free path represents an `effective' path until the phonon is finally absorbed. 
+ 
+ Unfortunately they do not supply the full details of their samples, such as the exact dimensions of the samples they use which makes an 
+ explicit calculation difficult. Nevertheless, we estimate that the mean free length until the first impact must be less than $20\si{c\meter}$ and
+ using further geometric arguments we can reason it should be on the order of $1 \si{c\meter}$. Thus, approximating $\frac{4V}{F_T}$ with this
+ value, we can estimate the value of $K_B$ using the y intercept of the plot in their paper. Using a value of $\Gamma(0) = \frac{1}{65 \times 10^{-6}}$, we obtain the probability for phonon anharmonic decay on the surface.
+ 
+ \begin{equation}
+ K_{B_0} = \Gamma(0) \times \frac{\Lambda_F}{\langle c \rangle} = 0.0259
+\end{equation}  
+ 
+Trumpp and Eisenmenger studied phonons of a fixed frequency, so the above $K_B$ is valid for this frequency ($280\si{G\hertz}$). However,
+there are strong reasons to believe that this probability should scale as $\omega^5$ in at least a limited low temperature regime. Thus we 
+may calculate the surface anharmonic probability as follows:
+
+\begin{equation}
+K_{SAD}(\nu) = K_{B_0} \left(\frac{\nu}{280 \times 10^{9}}\right)^5
+\end{equation}
+ 
+Having obtained the probability for surface anharmonic decay and the total diffusive scattering rate, we can get the lambertian scattering rate
+by simply subtracting the former from the latter. In the same manner, we can get the specular scattering rate by subtracting the total diffusive 
+rate from 1. In this manner, we can obtain all relevant rates, presented in the plot below:
+
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=.6]{All_Rates.png}
+\end{figure}
+ 
+For the purposes of this work, we just require a fit that accurately replicates these numbers rather than some fit with sound theoretical motivations.
+As such, we choose the smallest degree polynomial fit with a good fit - characterised by a chi squared test - to model the probability. We chose the 
+smallest degree to avoid overfitting to the data.
+ Doing so 
+yields the following final boundary event probabilities:
+
+\begin{table}[!h]
+\centering
+\begin{tabular}{|c|c|} \hline
+Process Type & Probability (frequency in GHz) \\ \hline
+Lambertian  & $-2.98\e{-11} f^4 + 1.71\e{-8} f^3 - 2.47\e{-6} f^2 + 7.83\e{-4} f + 5.88\e{-2}$ \\ \hline
+SAD & $1.51\e{-14} f^5 + 9.27\e{-18} f^4 - 6.28\e{-15} f^3 + 2.01\e{-12} f^2 - 2.28\e{-10}  f + 6.02\e{-9}$ \\ \hline
+Specular & $2.9\e{-13} f^4 + 3.1\e{-9} f^3 - 3.21\e{-6} f^2 - 2.03\e{-4} f + 0.928$ \\ \hline
+\end{tabular}
+\caption{The probabilities of the boundary events as functions of the frequency in GHz.}
+\end{table}
+
+From Figure 6, we can see that these probabilities will only make sense until around $520\si{G\hertz}$, since then the rapid rise of the surface decay
+rate causes the lambertian probability to decrease sharply. Thus, using the above conversion  between frequency and temperature \eqref{eq:10}, we see that these
+distributions are valid for temperatures up to approximately $6\si{K}$.
+
+A further issue for the purposes of the Monte Carlo is that due to an imperfect fit, the probabilities at a given frequency might not sum exactly
+to one (being off by around $\sim 0.01$), but this is easily overcome by normalising them by the total which is what we do in this Monte Carlo.
+
+\subsection*{Surface Anharmonic Decay Implementation}
+The exact physical mechanisms underlying the surface anharmonic decays aren't well studied, so for the purposes of this Monte Carlo we approximate
+the surface behaviour with the bulk behaviour. The distribution of the daughter phonons is determined by the same distributions as the bulk 
+energy PDFs and the output direction is randomised.
+
+\section*{Phonon Removal}
+Once phonons have downconverted significantly enough, they are removed from the simulation. The threshold of removal is governed by the Aluminium 
+energy gap since this relates to whether phonons can be seen by the detectors on the surface. The energy of the phonons is calculated as 
+$E = \hbar \omega$ where $\omega = 2\pi \nu$ and $\nu$ is given by \eqref{eq:10}. In particular, the phonon is dropped from the simulation if 
+$E < 2E_{gap}$ where $E_{gap} = 1.75\e{-4} \si{\electronvolt}$
+
+In the present implementation, the Monte Carlo is supplied with a `coverage' value, which indicates the proportion of the surface area covered
+by aluminium. Whenever the phonon hits a boundary in the simulation, 
 
 \pagebreak
 \begin{thebibliography}{99} 
@@ -178,6 +328,11 @@ Optimizing the design and analysis of cryogenic semiconductor dark matter detect
 
 \bibitem[3]{3}
 Tamura, S. Phys. Rev. B 31, 4 (1985)
-Optimizing the design and analysis of cryogenic semiconductor dark matter detectors for maximum sensitivity - Pyle, Matt Christopher FERMILAB-THESIS-2012-53
+
+\bibitem[4]{4}
+Klitsner, T. and Pohl, R. O. Phys. Rev. B 36, 12 (1987)
+
+\bibitem[5]{5}
+Trumpp, H. J. and Eisenmenger, W. Z. Physik B 28, 159-171 (1977)
 \end{thebibliography}
 \end{document}

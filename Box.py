@@ -115,15 +115,15 @@ class Box:
         num_particles = self.get_num_particles()
         self.particles[num_particles] = particle
 
-    def update_time(self, time):
-        """
-        Update box time. Simultaneously updates 
-        for all particles to maintain consistency. 
-        
-        :param time: Time to update particles with. 
-        """
-        for particle_name in self.particles:
-            self.particles[particle_name].set_t(time)
+    #def update_time(self, time):
+    #   """
+    #    Update box time. Simultaneously updates
+    #    for all particles to maintain consistency.
+    #
+    #    :param time: Time to update particles with.
+    #   """
+    #    for particle_name in self.particles:
+    #        self.particles[particle_name].set_t(time)
 
     def get_material(self):
         """
@@ -137,10 +137,10 @@ class Box:
         """
         return self.coverage
 
-    def remove_particle(self, particle):
+    def remove_particle_from_box(self, particle):
 
         particle_index = self.get_particle_no(particle.get_name())
-        self.particles[particle_index].remove()
+        particle.remove()
         del self.particles[particle_index]
         del self.colours[particle_index]
 

@@ -50,14 +50,14 @@ with open(fname, 'r') as filestream:
         x.append(float(currentline[0])) 
         y.append(float(currentline[1])) 
 
-def apply_fit(x, y, fit, label, colour, plt):
+def apply_fit(x, y, fit, colour, plt):
      optimised_pars, pcov = opt.curve_fit(fit, x, y)
-     print("Parameters for " + label) 
+     #print("Parameters for " + label) 
      for i in range(len(optimised_pars)):
          print("Parameter number %i: %.2Ef" % (i, Decimal(optimised_pars[i])))
      print('\n') 	
      
-     plt.plot(freqs, fit(freqs, *optimised_pars), label=label, c=colour)
+     plt.plot(freqs, fit(freqs, *optimised_pars), c=colour)
 
 
 x, y = np.array(x), np.array(y) 
@@ -81,12 +81,13 @@ perfect_diffusion_rate.fill(5.93e5 * 2)
 #plt.figure(figsize=(10,7)) 
 f = plt.figure(1)
 plt.scatter(x, total_rates, s=4.0, label='Extracted datapoint Total Rate', c='black') 
-plt.scatter(x, surface_rates, s=4.0, label='Extracted surface rate', c='cyan')
+plt.scatter(x, surface_rates, s=4.0, label='Surface rate', c='cyan')
+plt.scatter(x, bulk_rates, s=4.0, label='Bulk Rate', c='g')
 
 optimised_pars_4, pcov_4 = opt.curve_fit(quartic_fit, x, surface_rates) 
-plt.plot(x, quartic_fit(x, *optimised_pars_4), label='quartic', c='r')
+plt.plot(x, quartic_fit(x, *optimised_pars_4), c='r')
 
-plt.title(reference + ' with applied fits')
+plt.title(reference)
 plt.legend(loc='best')
 plt.xlabel(xlabel)
 plt.ylabel(ylabel)
@@ -109,6 +110,7 @@ for i in range(len(x)):
 G_0 = 1/(65e-6) 
 L_c = 1 
 sad_280GHz = G_0 * L_c / (5.93e5) 
+print("SAD 280GHZ %f " %  sad_280GHz)
 sad = sad_280GHz * (freqs /(280)) ** 5
 p_specular = 1 - total_diffusion_probability
 p_lambertian = total_diffusion_probability - sad 
@@ -126,10 +128,10 @@ plt.scatter(freqs, p_specular, s=4.0, label="Specular Reflection Probability", c
 plt.scatter(freqs, sad, s=4.0, label="SAD Probability", c="b")
 plt.scatter(freqs, total_diffusion_probability, s=3.0, label="Total Diffusive Probability", c="g" )
 
-apply_fit(freqs, total_diffusion_probability, quartic_fit, "Quartic Fit Total Diffusive Probability", "g", plt)
-apply_fit(freqs, p_lambertian, quartic_fit, "Quartic Fit: Lambertian Reflection Probability", "cyan", plt) 
-apply_fit(freqs, p_specular, quartic_fit, "Quartic Fit: Specular Reflection Probability", "r", plt) 
-apply_fit(freqs, sad, quintic_fit, "Quintic Fit: Surface Anharmonic Decay Probability", "b", plt)
+apply_fit(freqs, total_diffusion_probability, quartic_fit, "g", plt)
+apply_fit(freqs, p_lambertian, quartic_fit, "cyan", plt) 
+apply_fit(freqs, p_specular, quartic_fit, "r", plt) 
+apply_fit(freqs, sad, quintic_fit, "b", plt)
 
 #apply_fit(freqs, total_diffusion_probability, linear_fit, "Linear Fit Total Diffusive Probability", "g", plt)
 
@@ -138,7 +140,6 @@ apply_fit(freqs, sad, quintic_fit, "Quintic Fit: Surface Anharmonic Decay Probab
 def test(x):
     return 0.928416729939327 - 0.000203394703660 * (x) -0.000003213797743 * (x**2) + 0.000000003104251 * (x**3) + 0.000000000000290 * (x**4) 
 
-plt.plot(freqs, test(freqs), c='black')
 plt.plot(freqs, one, c="black")
 plt.xlabel("Frequency / GHz")
 plt.ylabel("Probability")

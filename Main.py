@@ -22,7 +22,7 @@ UPPER_BOUND_FREQ_ST = 2.4e12
 PI = np.pi
 
 
-def simulate_step(frames, box, points, colours, title):
+def simulate_step(frames, box, points, colours, title, out_file, coverage_ratio):
     """
     The simulation step. At each step, we choose a random particle 
        and calculate the timestep required for all the processes: 
@@ -55,7 +55,8 @@ def simulate_step(frames, box, points, colours, title):
 
     if not particle_list:
         print("ALL PHONONS BELOW ENERGY THRESHOLD OR ABSORBED, ENDING SIMULATION")
-        os._exit(0)
+        out_file.close()
+        sys.exit(0)
 
     particle_index = np.random.choice(np.array(list(box.particles.keys())))
     particle = box.get_particle(particle_index)
@@ -100,7 +101,8 @@ def simulate_step(frames, box, points, colours, title):
         # Otherwise begin propagation to boundary
         # Advance time
         new_t = curr_t + smallest_time
-        box.update_time(new_t)
+        #box.update_time(new_t)
+        particle.set_t(new_t)
 
         particle.set_x(x_boundary)
         particle.set_y(y_boundary)
@@ -120,6 +122,10 @@ def simulate_step(frames, box, points, colours, title):
               - box.get_material().get_particle_velocity(particle.get_type())
 
     # If particle survives simulation step, ensure velocities are conserved.
+    if particle.is_tracked() and particle.is_removed():
+        print("WRITING!!!!! \n \n")
+        out_file.write(str(coverage_ratio) + ", " + str(1/(particle.get_t() * 1e6)) + "\n")
+
     if not particle.is_removed() and abs(Delta_V) > 1e-6:
         print("Velocities not being conserved properly! Delta_V: %f" % Delta_V)
         print("Original particle type is: %f" % particle.get_type())
@@ -150,12 +156,16 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
     :param num_steps: The number of steps for the animation 
     :return: None
     """
-
+    print("RUNNING \n \n")
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     particle_dict = {}
     colour_dict = {}
+
+    filename = sys.argv[2]
+    outf = open(filename, "a")
+
 
     material = Silicon
 
@@ -169,7 +179,7 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
         # Initial distribution of phonons governed by the distribution in
         # http://cdms.berkeley.edu/Dissertations/mpyle.pdf page 182.
         # 54.1% Slow Transverse, 36.3% Fast Transverse, 9.6% Longitudinal
-        rand_type = (np.random.choice(3, 1, p=[0.541, 0.363, 0.096]) + 1)[0]
+        rand_type = (np.random.choice(3, 1, p=[1/3.0, 1/3.0, 1/3.0]) + 1)[0]
         colour_dict[i] = rand_type
 
         # Ensures that phonons are generated with the appropriate velocity
@@ -178,10 +188,13 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
         velocity = material.get_particle_velocity(rand_type)
 
         random_vx, random_vy, random_vz = create_random_spherical_vel(velocity)
-        random_freq = np.random.uniform(LOWER_BOUND_FREQ, UPPER_BOUND_FREQ)
-
+        #random_freq = np.random.uniform(LOWER_BOUND_FREQ, UPPER_BOUND_FREQ)
+        random_freq = 280e9
         ptcle = Particle(random_x, random_y, random_z, random_vx, random_vy, random_vz,
                          "Particle " + str(i), rand_type, random_freq)
+
+        if np.random.rand() < 1.0:
+            ptcle.start_tracking()
 
         particle_dict[i] = ptcle
 
@@ -205,10 +218,11 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
 
     title = ax.set_title('3D Test')
     ani = animation.FuncAnimation(fig, simulate_step, frames=np.arange(0, num_steps),
-                                  fargs=(box, points, colour_dict, title),
+                                  fargs=(box, points, colour_dict, title, outf, coverage_ratio),
                                   interval=100)
 
     plt.grid()
     plt.show()
 
-run(100, 1e-7, 1e-7, 1e-7, 0.2, 4000)
+coverage = float(sys.argv[1])
+run(100, 1e-2, 1e-2, 1e-2, coverage, 4000)

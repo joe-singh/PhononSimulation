@@ -36,7 +36,7 @@ def phonon_isotope_scatter(particle, t, box, points, colours):
     """
     # advance time:
     particle.set_t(particle.get_t() + t)
-    box.update_time(particle.get_t())
+    # box.update_time(particle.get_t())
     # simulate change of trajectory due to scatter
     curr_vx = particle.get_vx()
     curr_vy = particle.get_vy()

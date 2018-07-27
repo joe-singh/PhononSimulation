@@ -9,6 +9,7 @@ from numpy import sin, cos, arccos, arctan2
 from UtilityMethods import *
 import BoundaryInteractions
 
+
 def get_anharmonic_rate(box, particle, LLT):
     """
     Calculates the anharmonic decay rate associated with this 
@@ -274,7 +275,8 @@ def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
     V_TRANSVERSE = material.get_transverse_vel()
     V_LONGITUDINAL = material.get_longitudinal_vel()
 
-    box.update_time(particle.get_t() + t)
+    particle.set_t(particle.get_t() + t)
+    # box.update_time(particle.get_t() + t)
 
     # Choose a new random type 1 or 2, corresponding to transverse phonons.
     new_phonon_type = np.random.randint(1, 3)
@@ -294,7 +296,7 @@ def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
     # We will change all these variables below.
     new_phonon = Particle(curr_x, curr_y, curr_z, 0, 0, 0,
                             "Particle " + str(box.get_num_particles()),
-                            new_phonon_type, 0, t=particle.get_t())
+                            new_phonon_type, 0, t=0)
 
     w_0 = particle.get_w()
 
