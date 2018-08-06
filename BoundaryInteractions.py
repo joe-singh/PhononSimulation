@@ -130,18 +130,6 @@ def boundary_interaction(particle, box, points, colours):
         if np.random.rand() < box.get_material().get_sensor_absorb_probability():
             # Particle absorbed by aluminium
             remove_particle(particle, box, points)
-            #box.remove_particle(particle)
-
-            #x_points = box.get_x_array()
-            #y_points = box.get_y_array()
-            #z_points = box.get_z_array()
-
-            #data = (x_points, y_points, z_points)
-            #points._offsets3d = data
-
-            #colour_array = get_colour_array(box.colours.values())
-            #points._facecolor3d = colour_array
-            #points._edgecolor3d = colour_array
             return
 
     # If no absorption, continue the process.

@@ -402,6 +402,25 @@ def get_cos_angle():
     return np.arcsin(np.random.rand())
 
 
+def closest_distance_to_box(box, particle):
+
+    x, y, z = particle.get_x(), particle.get_y(), particle.get_z()
+    height = box.get_height()
+    width = box.get_width()
+    depth = box.get_depth()
+
+    top_dist = depth - z
+    bottom_dist = z
+
+    right_dist = width - x
+    left_dist = x
+
+    front_dist = height - y
+    back_dist = y
+
+    return min(top_dist, bottom_dist, right_dist, left_dist, front_dist, back_dist)
+
+
 def remove_particle(particle, box, points):
     box.remove_particle_from_box(particle)
 

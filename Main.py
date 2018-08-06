@@ -10,6 +10,7 @@ import mpl_toolkits.mplot3d.axes3d
 from AnharmonicDecay import *
 from IsotopicScattering import *
 from BoundaryInteractions import *
+from DiffusivePropagation import check_diffusive_prop, diffusive_propagation
 from Box import Box
 
 # Max characteristic phonon frequency. Set at 10 THz
@@ -69,12 +70,14 @@ def simulate_step(frames, box, points, colours, title, out_file, coverage_ratio)
     boundary_info = time_to_boundary(box, particle)
     anharmonic_LTT_rate = get_anharmonic_rate(box, particle, 0)
     anharmonic_LLT_rate = get_anharmonic_rate(box, particle, 1)
+    anharmonic_total_rate = anharmonic_LLT_rate + anharmonic_LTT_rate
     isotopic_rate = isotopic_scatter_rate(box, particle)
 
     r = np.random.random()
     t_isotopic = -np.log(r) / isotopic_rate
     t_anharmonic_LLT = -np.log(r) / anharmonic_LLT_rate
     t_anharmonic_LTT = -np.log(r) / anharmonic_LTT_rate
+    t_anharmonic_total = -np.log(r) / anharmonic_total_rate
 
     t_boundary = boundary_info[0]
     x_boundary = boundary_info[1]
@@ -85,32 +88,42 @@ def simulate_step(frames, box, points, colours, title, out_file, coverage_ratio)
     print("t_boundary: %f, t_anharmonic_LTT: %f, t_anharmonic_LLT: %f, t_isotopic: %f" %
           (t_boundary, t_anharmonic_LTT, t_anharmonic_LLT, t_isotopic))
 
-    if smallest_time == t_isotopic:
-        print("ISOTOPIC")
-        phonon_isotope_scatter(particle, t_isotopic, box, points, colours)
+    do_diffuse_scatter, sigma = check_diffusive_prop(particle, box,
+                                                     t_isotopic, t_anharmonic_total, t_boundary,
+                                                     isotopic_rate, anharmonic_total_rate)
 
-    elif smallest_time == t_anharmonic_LLT:
-        print("BULK ANHARMONIC DECAY LLT")
-        anharmonic_decay_LLT(particle, box, t_anharmonic_LLT, points, colours)
-
-    elif smallest_time == t_anharmonic_LTT:
-        print("BULK ANHARMONIC DECAY LTT")
-        anharmonic_decay_LTT(particle, box, t_anharmonic_LTT, points, colours)
+    if do_diffuse_scatter:
+        diffusive_propagation(particle, box, sigma, t_anharmonic_total, t_isotopic,
+                              t_anharmonic_LTT, t_anharmonic_LLT,
+                              points, colours)
     else:
-        print("BOUNDARY")
-        # Otherwise begin propagation to boundary
-        # Advance time
-        new_t = curr_t + smallest_time
-        #box.update_time(new_t)
-        particle.set_t(new_t)
 
-        particle.set_x(x_boundary)
-        particle.set_y(y_boundary)
-        particle.set_z(z_boundary)
+        if smallest_time == t_isotopic:
+            print("ISOTOPIC")
+            phonon_isotope_scatter(particle, t_isotopic, box, points, colours)
 
-        # Check if the new position is at the boundary or beyond. If it is change
-        # the velocity vector according to the appropriate process. Simulate surface effects.
-        boundary_interaction(particle, box, points, colours)
+        elif smallest_time == t_anharmonic_LLT:
+            print("BULK ANHARMONIC DECAY LLT")
+            anharmonic_decay_LLT(particle, box, t_anharmonic_LLT, points, colours)
+
+        elif smallest_time == t_anharmonic_LTT:
+            print("BULK ANHARMONIC DECAY LTT")
+            anharmonic_decay_LTT(particle, box, t_anharmonic_LTT, points, colours)
+        else:
+            print("BOUNDARY")
+            # Otherwise begin propagation to boundary
+            # Advance time
+            new_t = curr_t + smallest_time
+            #box.update_time(new_t)
+            particle.set_t(new_t)
+
+            particle.set_x(x_boundary)
+            particle.set_y(y_boundary)
+            particle.set_z(z_boundary)
+
+            # Check if the new position is at the boundary or beyond. If it is change
+            # the velocity vector according to the appropriate process. Simulate surface effects.
+            boundary_interaction(particle, box, points, colours)
 
     # Update position.
 
@@ -134,6 +147,7 @@ def simulate_step(frames, box, points, colours, title, out_file, coverage_ratio)
 
     # Final check to make sure no particle has jumped outside.
     if not check_no_particle_outside_box(box):
+        print("outside box")
         os._exit(1)
 
     data = (x_points, y_points, z_points)
@@ -179,7 +193,7 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
         # Initial distribution of phonons governed by the distribution in
         # http://cdms.berkeley.edu/Dissertations/mpyle.pdf page 182.
         # 54.1% Slow Transverse, 36.3% Fast Transverse, 9.6% Longitudinal
-        rand_type = (np.random.choice(3, 1, p=[1/3.0, 1/3.0, 1/3.0]) + 1)[0]
+        rand_type = (np.random.choice(3, 1, p=[0.541, 0.363, 0.096]) + 1)[0]
         colour_dict[i] = rand_type
 
         # Ensures that phonons are generated with the appropriate velocity
@@ -188,8 +202,8 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
         velocity = material.get_particle_velocity(rand_type)
 
         random_vx, random_vy, random_vz = create_random_spherical_vel(velocity)
-        #random_freq = np.random.uniform(LOWER_BOUND_FREQ, UPPER_BOUND_FREQ)
-        random_freq = 280e9
+        random_freq = np.random.uniform(LOWER_BOUND_FREQ, UPPER_BOUND_FREQ)
+        #random_freq = 280e9
         ptcle = Particle(random_x, random_y, random_z, random_vx, random_vy, random_vz,
                          "Particle " + str(i), rand_type, random_freq)
 
@@ -225,4 +239,4 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
     plt.show()
 
 coverage = float(sys.argv[1])
-run(100, 1e-2, 1e-2, 1e-2, coverage, 4000)
+run(100, 100, 100, 100, coverage, 4000)
