@@ -45,7 +45,7 @@ def get_sad_probability(particle):
     # Convert frequency to GHz
     f = particle.get_f()/1e9
 
-    return 1.51e-14 * (f**5) + 9.27e-18 * (f**4) - 6.28e-15 * (f**3) + 2.01e-12 * (f**2) - 2.28e-10 * f + 6.02e-09
+    return 1.51e-14 * (f**5)  
 
 
 def get_specular_probability(particle):

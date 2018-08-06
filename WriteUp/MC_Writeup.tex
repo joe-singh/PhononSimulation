@@ -268,7 +268,7 @@ there are strong reasons to believe that this probability should scale as $\omeg
 may calculate the surface anharmonic probability as follows:
 
 \begin{equation}
-K_{SAD}(\nu) = K_{B_0} \left(\frac{\nu}{280 \times 10^{9}}\right)^5
+K_{SAD}(\nu) = K_{B_0} \left(\frac{\nu}{280 \times 10^{9}}\right)^5 =  1.51\e{-14} \nu^5
 \end{equation}
  
 Having obtained the probability for surface anharmonic decay and the total diffusive scattering rate, we can get the lambertian scattering rate
@@ -290,16 +290,24 @@ yields the following final boundary event probabilities:
 \centering
 \begin{tabular}{|c|c|} \hline
 Process Type & Probability (frequency in GHz) \\ \hline
-Lambertian  & $-2.98\e{-11} f^4 + 1.71\e{-8} f^3 - 2.47\e{-6} f^2 + 7.83\e{-4} f + 5.88\e{-2}$ \\ \hline
-SAD & $1.51\e{-14} f^5 + 9.27\e{-18} f^4 - 6.28\e{-15} f^3 + 2.01\e{-12} f^2 - 2.28\e{-10}  f + 6.02\e{-9}$ \\ \hline
-Specular & $2.9\e{-13} f^4 + 3.1\e{-9} f^3 - 3.21\e{-6} f^2 - 2.03\e{-4} f + 0.928$ \\ \hline
+Lambertian  & $-2.98\e{-11} \nu^4 + 1.71\e{-8} \nu^3 - 2.47\e{-6} \nu^2 + 7.83\e{-4} \nu + 5.88\e{-2}$ \\ \hline
+SAD & $1.51\e{-14} \nu^5 $ \\ \hline
+Specular & $2.9\e{-13} \nu^4 + 3.1\e{-9} \nu^3 - 3.21\e{-6} \nu^2 - 2.03\e{-4} \nu + 0.928$ \\ \hline
 \end{tabular}
 \caption{The probabilities of the boundary events as functions of the frequency in GHz.}
 \end{table}
 
-From Figure 6, we can see that these probabilities will only make sense until around $520\si{G\hertz}$, since then the rapid rise of the surface decay
-rate causes the lambertian probability to decrease sharply. Thus, using the above conversion  between frequency and temperature \eqref{eq:10}, we see that these
-distributions are valid for temperatures up to approximately $6\si{K}$.
+From Figure 6, we can see that these dotted probabilities will only make sense until around $520\si{G\hertz}$, since then the rapid rise of the surface
+decay rate causes the lambertian probability to decrease sharply. Thus, using the above conversion  between frequency and 
+temperature \eqref{eq:10}, we see that these distributions are valid as probabilities for temperatures up to approximately $6\si{K}$.
+
+The decline at higher frequencies however is unphysical. A more physically consistent approach would be to extrapolate the maximum of the 
+lambertian process for higher frequencies and use this as the lambertian scatter rate. This then elevates the total diffusive rate which in turn 
+decreases the overall specular rate. The reason for such unphysical behaviour is our comparison of two separate experiments with different
+samples of silicon, which would have systematics associated with it. Of course, our new model may be more consistent - or at least less troublesome
+on the surface - but it likely is not physically correct. This however is not a problem since we are only concerned with phonons at a lower 
+frequency range far below this breakdown occurs. Later work may study these processes in detail to incorporate them more correctly into the 
+simulation.
 
 A further issue for the purposes of the Monte Carlo is that due to an imperfect fit, the probabilities at a given frequency might not sum exactly
 to one (being off by around $\sim 0.01$), but this is easily overcome by normalising them by the total which is what we do in this Monte Carlo.

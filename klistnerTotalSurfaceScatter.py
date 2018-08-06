@@ -40,8 +40,8 @@ def quartic_fit(x, a, b, c, d, e):
 def cubic_fit(x, a, b, c, d):
     return a*(x**3) + b*(x**2) + c*(x) + d
 
-def quintic_fit(x, a, b, c, d, e, f): 
-    return a*(x**5) + b*(x**4) + c*(x**3) + d*(x**2) + e*x + f
+def quintic_fit(x, a): 
+    return a*(x**5)
 
 with open(fname, 'r') as filestream:
     lines = filestream.readlines()[2:]
@@ -57,7 +57,7 @@ def apply_fit(x, y, fit, colour, plt):
          print("Parameter number %i: %.2Ef" % (i, Decimal(optimised_pars[i])))
      print('\n') 	
      
-     plt.plot(freqs, fit(freqs, *optimised_pars), c=colour)
+     plt.plot(freqs, fit(freqs, *optimised_pars), c=colour, linestyle='--')
 
 
 x, y = np.array(x), np.array(y) 
@@ -126,26 +126,29 @@ print("3.5K probability is %f" % sad_3_5K)
 plt.scatter(freqs, p_lambertian, s=4.0, label="Lambertian Scattering Probability", c="cyan")
 plt.scatter(freqs, p_specular, s=4.0, label="Specular Reflection Probability", c="r")
 plt.scatter(freqs, sad, s=4.0, label="SAD Probability", c="b")
-plt.scatter(freqs, total_diffusion_probability, s=3.0, label="Total Diffusive Probability", c="g" )
-
+plt.scatter(freqs, total_diffusion_probability, s=3.0, label="Total Diffusive Probability", c="g")
+plt.axvline(80, label='80 GHz')
+plt.plot(freqs, sad_280GHz * (freqs/280)**5, c='blue')
 apply_fit(freqs, total_diffusion_probability, quartic_fit, "g", plt)
 apply_fit(freqs, p_lambertian, quartic_fit, "cyan", plt) 
 apply_fit(freqs, p_specular, quartic_fit, "r", plt) 
-apply_fit(freqs, sad, quintic_fit, "b", plt)
 
-#apply_fit(freqs, total_diffusion_probability, linear_fit, "Linear Fit Total Diffusive Probability", "g", plt)
 
-#apply_fit(freqs, sad, quintic_fit, "Quintic Fit SAD Probability", "b", plt)
 
-def test(x):
-    return 0.928416729939327 - 0.000203394703660 * (x) -0.000003213797743 * (x**2) + 0.000000003104251 * (x**3) + 0.000000000000290 * (x**4) 
+def lambertian(f): 
+    return  -2.98e-11 * (f**4) + 1.71e-8 * (f**3) - 2.47e-6* (f**2) + 7.83e-4*f + 5.88e-2 
 
+def total_diff(f):
+    return  -2.9e-13 * f**4 - 3.1e-9 * f**3 + 3.21e-6 * f**2 + 2.03e-4 * f + 7.16e-2
+plt.plot(freqs, np.piecewise(freqs, [freqs < 366.2, freqs >= 366.2], [lambda f:-2.98e-11 * (f**4) + 1.71e-8 * (f**3) - 2.47e-6* (f**2) + 7.83e-4*f + 5.88e-2, 0.318]), label='Physical Lambertian Probability', c='cyan')
+plt.plot(freqs, np.piecewise(freqs, [freqs < 366.2, freqs >= 366.2], [lambda f: total_diff(f), lambda f: 0.318 + 1.51e-14 * f**5]), c='g', label='Physical Total Diffusive Probability')
+plt.plot(freqs, np.piecewise(freqs, [freqs < 366.2, freqs >= 366.2], [lambda f: 1 - total_diff(f), lambda f: 1 - (0.318 + 1.51e-14 * f**5)]), c='r', label='Physical Specular Probability')
 plt.plot(freqs, one, c="black")
 plt.xlabel("Frequency / GHz")
 plt.ylabel("Probability")
 plt.legend(loc="best") 
 plt.ylim(0, 1) 
-plt.xlim(0, 523)
+plt.xlim(0, 540)
 plt.grid()
 plt.title("Total Diffusive Surface Interaction Probability")
 plt.show() 
