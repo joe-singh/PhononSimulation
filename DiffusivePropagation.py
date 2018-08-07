@@ -10,7 +10,7 @@ import numpy as np
 
 
 def check_diffusive_prop(particle, box, t_isotopic, t_anharmonic, t_boundary, isotopic_rate, anharmonic_rate,
-                   sigma_tolerance=4, time_tolerance=100.0, isotopic_anharmonic_tolerance=10):
+                   sigma_tolerance=4, time_tolerance=100.0, isotopic_anharmonic_tolerance=100.0):
 
     type = particle.get_type()
 

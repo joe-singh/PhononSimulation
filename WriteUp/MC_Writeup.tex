@@ -298,7 +298,7 @@ Specular & $2.9\e{-13} \nu^4 + 3.1\e{-9} \nu^3 - 3.21\e{-6} \nu^2 - 2.03\e{-4} \
 \end{table}
 
 From Figure 6, we can see that these dotted probabilities will only make sense until around $520\si{G\hertz}$, since then the rapid rise of the surface
-decay rate causes the lambertian probability to decrease sharply. Thus, using the above conversion  between frequency and 
+decay rate causes the lambertian probability to decrease sharply. Thus, using the above conversion between frequency and 
 temperature \eqref{eq:10}, we see that these distributions are valid as probabilities for temperatures up to approximately $6\si{K}$.
 
 The decline at higher frequencies however is unphysical. A more physically consistent approach would be to extrapolate the maximum of the 
@@ -326,6 +326,111 @@ $E < 2E_{gap}$ where $E_{gap} = 1.75\e{-4} \si{\electronvolt}$
 In the present implementation, the Monte Carlo is supplied with a `coverage' value, which indicates the proportion of the surface area covered
 by aluminium. Whenever the phonon hits a boundary in the simulation, 
 
+\section*{Diffusive Propagation}
+In order to speed up the Monte Carlo, we implement a diffusive propagation routine for the phonons. The motivation for this is that for a sizable 
+portion of the energy range of interest, isotopic scatters will dominate over anharmonic decays in the bulk. For our purposes, isotopic scatters 
+are of little interest so it is essentially a waste to simulate 10 isotopic scatters fully to get one anharmonic decay. It would be better that we 
+somehow bypass those scatters directly. This is where the diffusive propagation is used. 
+
+Since the isotopic scattering is normally simulated as leaving the magnitude of the velocity unchanged but changing the direction randomly, 
+stretches of the phonon's trajectory which are dominated by isotopic scatters can be treated as random walks. The advantage of this is that
+instead of simulating 10 isotopic scatters fully, each lasting some time $t$ until an anharmonic decay happens, we can instead just simulate a 
+random walk to obtain the particle's position before the anharmonic decay directly. In the asymptotic case of a large number of particles 
+and infinitely large crystal this will of course stop being an approximation and behave arbitrarily close to real physics. 
+
+\subsection*{Conditions on the Diffusive Regime}
+To account for the sacrifice in terms of physics accuracy that we exchange for the speedup, we are careful to restrict the regimes in which we 
+simulate via diffusive propagation. In particular, the main concern is that the phonon should be far from the boundary so that we can simulate
+boundary processes properly and that the phonon should be in the energy range such that isotopic scattering dominates anharmonic scattering 
+but the phonon isn't ballistic yet. 
+
+\subsection*{Implementation}
+We will first describe the diffusive propagation implementation, and then the conditions used to determine whether diffusive routines are to be used
+or not. 
+
+When diffusively propagating, the phonon's final position is chosen by picking final $x, y, z$ coordinates from normal distributions:
+
+\begin{equation}
+x_{\text{new}} \sim \mathcal{N}(x_0, \sigma^2)
+\end{equation}
+
+The variance is determined by physical considerations, and is given by
+\begin{equation}
+\sigma^2 = \left[\frac{1}{3}\langle v^2 \rangle t_{\text{iso}}\right]t_{\text{AH}}
+\end{equation}
+Where $\langle v^2 \rangle$ is the mean square velocity of the phonon, which for us is just a constant since we assume isotopic scattering 
+leaves the velocity unchanged, and $t_{\text{iso}}$ and $t_{\text{AH}}$  are the average times for isotopic scatters and anharmonic decay, drawn 
+from an exponential with rates given by \eqref{eq:2} and \eqref{eq:3} respectively. For transverse phonons that do not undergo anharmonic decay,
+the variance is given as 
+\begin{equation}
+\sigma^2 = \frac{1}{3}\langle v^2 \rangle t_{\text{iso}}^2
+\end{equation}
+
+If the final position is in a forbidden region (i.e. outside the volume in which the phonons are), the Monte Carlo will simply keep picking new positions
+until it finds a valid one. This is a rudimentary solution but, combined with the conditions mentioned below, is sufficient.
+
+The conditions and their implementations are as follows:
+\begin{enumerate}
+\item The phonon must be far away from the boundary.
+
+The distance of closest approach between the phonon and the boundary surface is calculated, and this must be larger than $n \sigma$ where
+$n$ is some characteristic tolerance. 
+The reason for this is to ensure that we do not overlook boundary interactions by having them ignored by diffusive propagation close to the
+boundary. Choosing $n$ appropriately is key to not only mitigating the problem of diffusively propagating out of the box, but also of achieving a
+speed up. The lower $n$ is, the higher the risk of ignoring boundary events since we will use diffusive propagation closer to the boundaries. At the
+same time, a lower $n$ means a higher speed because diffusive propagation will be used more often. We propose that $n \in [3, 5]$ is a suitable
+choice. $3\sigma$ corresponds to 99.73\% meaning that if the boundary is at least that far then for a large majority of trials we will be safely away
+from it. Of course when the number of phonons is very large the small proportion will be significant. On the other hand, $5\sigma$ is safer but will 
+be slower in terms of performance. 
+
+\item The phonon must not be ballistic.
+
+The energy scale should not be so low such that isotopic events occur rarely in comparison with boundary hits. At low energies we are not concerned
+about anharmonic decay since that is proportional to $\nu^5$ while isotopic scattering is proportional to $\nu^4$. This condition is enforced by 
+demanding that $t_{\text{iso}} << t_{\text{boundary}}$ so that isotopic scatters still occur much more frequently than boundary hits. If the 
+phonon is clearly ballistic, the Monte Carlo should simulate the boundary hits so that the other boundary processes can take place. In the actual 
+implementation, the condition of being much smaller than is implemented by requiring that $\tau_{\text{iso}} << \frac{\tau_{\text{boundary}}}{m}$ 
+where $m$ is some tunable parameter. As with $n$ above, changing $m$ introduces a tradeoff between accuracy and speed. Lower $m$ 
+means we are willing to accept that the isotopic time is not as small which triggers diffusive propagation more often but compromises the 
+condition that isotopic scatters should far more often than ballistic boundary hits. This lower bound is clearly geometry dependent but 
+we may approximate it as follows: letting $v = 5000 \si{ms^{-1}}$ (approximately the Debye speed of sound in Silicon) and using a typical length
+scale of $100\si{mm}$ which is comparable to the CDMS cylindrical height/width length scale, we get that 
+\begin{equation}
+12 m^{\frac{1}{4}} \si{\GHz} < \nu
+\end{equation}
+
+Based on this, we propose between $m = 1000$ which roughly corresponds to $70 \si{G\hertz} < \nu$ and $m = 100$ which gives $40 \si{G\hertz}<
+\nu$
+
+\item The phonon's interactions must be dominated by isotopic scatters. 
+
+While the previous condition sets a lower bound on the energy scale, an upper bound can be set by demanding that isotopic scatters occur far 
+more frequently than anharmonic decays. This is required since diffusive propagation is only accurate when isotopic scatters happen for large 
+portions of the phonon trajectory. This is implemented by requiring that $\frac{\Gamma_{\text{iso}}}{\Gamma_{\text{AH}}} > c$ where 
+$c$ is a tunable constant of tolerance. We effectively require that the isotopic rate be larger than the anharmonic decay rate by some 
+factor. Lower $c$ means faster propagation since we relax our restriction on what ratio of isotopic scatter to anharmonic decay means the phonon
+is majority isotopic scattering, but naturally this leads to less accurate simulation. We can explicitly calculate the upper bound set by this:
+
+\begin{align*}
+\frac{\Gamma_{\text{iso}}}{\Gamma_{\text{AH}}} &> c \\
+\frac{B\nu^4}{A\nu^5} &> c \\
+\frac{B}{cA} &> \nu
+\end{align*}
+
+Or putting in the numerical values, we get 
+
+\begin{equation}
+\nu < \frac{33}{c} \si{T\hertz}
+\end{equation}
+
+Given the characteristic energy and frequency scales of the simulation so far, we propose $c = 100$ as a first guess, 
+which means that $\nu < 330\si{G\hertz}$.
+\end{enumerate}
+
+Given the above constraints on the frequency, we see that diffusive propagation should occur roughly in the range 
+$50 \si{G\hertz} < \nu < 330 \si{G\hertz}$. Phonons are simulated initially with a uniformly distributed frequency between
+$1 \si{G\hertz}$ and $524 \si{G\hertz}$, which gives the probability of passing the energy cut to be roughly 0.5 with the suggested 
+parameters.
 \pagebreak
 \begin{thebibliography}{99} 
 \bibitem[1]{1}
