@@ -12,7 +12,9 @@ from IsotopicScattering import *
 from BoundaryInteractions import *
 from DiffusivePropagation import check_diffusive_prop, diffusive_propagation
 from Box import Box
+import time
 
+start_time = time.time()
 # Max characteristic phonon frequency. Set at 10 THz
 LOWER_BOUND_FREQ = 1e9
 UPPER_BOUND_FREQ = 524e9
@@ -57,6 +59,7 @@ def simulate_step(frames, box, points, colours, title, out_file, coverage_ratio)
     if not particle_list:
         print("ALL PHONONS BELOW ENERGY THRESHOLD OR ABSORBED, ENDING SIMULATION")
         out_file.close()
+        print("EXECUTION TIME: %s" % (time.time() - start_time))
         sys.exit(0)
 
     particle_index = np.random.choice(np.array(list(box.particles.keys())))
@@ -91,6 +94,8 @@ def simulate_step(frames, box, points, colours, title, out_file, coverage_ratio)
     do_diffuse_scatter, sigma = check_diffusive_prop(particle, box,
                                                      t_isotopic, t_anharmonic_total, t_boundary,
                                                      isotopic_rate, anharmonic_total_rate)
+
+    do_diffuse_scatter = False
 
     if do_diffuse_scatter:
         diffusive_propagation(particle, box, sigma, t_anharmonic_total, t_isotopic,
@@ -130,6 +135,8 @@ def simulate_step(frames, box, points, colours, title, out_file, coverage_ratio)
     x_points = box.get_x_array()
     y_points = box.get_y_array()
     z_points = box.get_z_array()
+
+    print(box.particles)
 
     Delta_V = get_magnitude(particle.get_vx(), particle.get_vy(), particle.get_vz()) \
               - box.get_material().get_particle_velocity(particle.get_type())
@@ -203,7 +210,8 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
 
         random_vx, random_vy, random_vz = create_random_spherical_vel(velocity)
         random_freq = np.random.uniform(LOWER_BOUND_FREQ, UPPER_BOUND_FREQ)
-        #random_freq = 280e9
+        random_freq = 70e9
+
         ptcle = Particle(random_x, random_y, random_z, random_vx, random_vy, random_vz,
                          "Particle " + str(i), rand_type, random_freq)
 
@@ -239,4 +247,4 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
     plt.show()
 
 coverage = float(sys.argv[1])
-run(100, 100, 100, 100, coverage, 4000)
+run(1, 1e6, 1e6, 1e6, coverage, 4000)

@@ -36,16 +36,20 @@ def phonon_isotope_scatter(particle, t, box, points, colours):
     """
     # advance time:
     particle.set_t(particle.get_t() + t)
-    # box.update_time(particle.get_t())
+
     # simulate change of trajectory due to scatter
-    curr_vx = particle.get_vx()
-    curr_vy = particle.get_vy()
-    curr_vz = particle.get_vz()
     x = particle.get_x()
     y = particle.get_y()
     z = particle.get_z()
 
-    v_mag = get_magnitude(curr_vx, curr_vy, curr_vz)
+    # Pick new phonon type at random and choose velocity
+    new_type = (np.random.choice(3, 1, p=[1/3.0, 1/3.0, 1/3.0]) + 1)[0]
+    v_mag = box.get_material().get_particle_velocity(new_type)
+
+    particle.set_type(new_type)
+    colours[box.get_particle_no(particle.get_name())] = new_type
+
+    # v_mag = get_magnitude(curr_vx, curr_vy, curr_vz)
     new_vx, new_vy, new_vz = create_random_spherical_vel(v_mag)
     particle.set_velocity(new_vx, new_vy, new_vz)
 
@@ -62,6 +66,10 @@ def phonon_isotope_scatter(particle, t, box, points, colours):
     x_points = box.get_x_array()
     y_points = box.get_y_array()
     z_points = box.get_z_array()
+
+    colour_array = get_colour_array(box.colours.values())
+    points._facecolor3d = colour_array
+    points._edgecolor3d = colour_array
 
     data = (x_points, y_points, z_points)
 

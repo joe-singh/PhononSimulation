@@ -102,6 +102,18 @@ def anharmonic_final_step(particle, box, t, colours, points, vx=0, vy=0, vz=0, n
     :param vz: The z component of the velocity
     :param new_particle: The new particle created in the anharmonic decay
     """
+    print("###### Post Anharmonic Energy: %f, 2 * Energy Gap: %f" % (particle.get_energy()*1e19, 2 * ENERGY_GAP*1e19))
+
+    if particle.get_energy() < 2 * ENERGY_GAP and not new_particle:
+        print(box.particles)
+        try:
+            remove_particle(particle, box, points)
+        except KeyError:
+            os._exit(1)
+        return
+
+    if particle.get_energy() < 2 * ENERGY_GAP and new_particle:
+        return
 
     if vx or vy or vz:
         particle.set_velocity(vx, vy, vz)
@@ -109,7 +121,7 @@ def anharmonic_final_step(particle, box, t, colours, points, vx=0, vy=0, vz=0, n
 
     if new_particle:
         box.add_particle(particle)
-        colours[box.get_num_particles()-1] = particle.get_type()
+        colours[box.get_num_particles() - 1] = particle.get_type()
         x_points = box.get_x_array()
         y_points = box.get_y_array()
         z_points = box.get_z_array()
@@ -328,11 +340,6 @@ def generic_anharmonic_decay(particle, box, t, points, colours, boundary, LTT):
     new_phonon.set_w(w_new_after)
 
     # Energy Gap defined in Utility Methods.
-    if particle.get_energy() < 2 * ENERGY_GAP:
-        remove_particle(particle, box, points)
-        return
-    if new_phonon.get_energy() < 2 * ENERGY_GAP:
-        remove_particle(new_phonon, box, points)
 
     v_0 = V_LONGITUDINAL
     v_new = V_TRANSVERSE

@@ -115,16 +115,6 @@ class Box:
         num_particles = self.get_num_particles()
         self.particles[num_particles] = particle
 
-    #def update_time(self, time):
-    #   """
-    #    Update box time. Simultaneously updates
-    #    for all particles to maintain consistency.
-    #
-    #    :param time: Time to update particles with.
-    #   """
-    #    for particle_name in self.particles:
-    #        self.particles[particle_name].set_t(time)
-
     def get_material(self):
         """
         Get material of box. 

@@ -4,7 +4,7 @@ Diffusive Propagation Methods
 Author: Jyotirmai (Joe) Singh 6/8/18
 """
 
-from UtilityMethods import closest_distance_to_box, beyond_boundary
+from UtilityMethods import closest_distance_to_box, beyond_boundary, create_random_spherical_vel
 from AnharmonicDecay import anharmonic_decay_LLT, anharmonic_decay_LTT
 import numpy as np
 
@@ -57,7 +57,8 @@ def check_diffusive_prop(particle, box, t_isotopic, t_anharmonic, t_boundary, is
 
 
 def diffusive_propagation(particle, box, sigma, t_anharmonic, t_isotopic,
-                             t_anharmonic_LTT, t_anharmonic_LLT, points, colours):
+                          t_anharmonic_LTT, t_anharmonic_LLT, points, colours):
+
     print("DIFFUSIVE PROPAGATION")
     x, y, z = particle.get_x(), particle.get_y(), particle.get_z()
 
@@ -80,7 +81,19 @@ def diffusive_propagation(particle, box, sigma, t_anharmonic, t_isotopic,
         particle.set_y(y_diffusive)
         particle.set_z(z_diffusive)
 
-    if particle.get_type() == 3:
+    # Simulate random change of particle type
+    # Pick new phonon type at random and choose velocity
+    new_type = (np.random.choice(3, 1, p=[1/3.0, 1/3.0, 1/3.0]) + 1)[0]
+    v_mag = box.get_material().get_particle_velocity(new_type)
+
+    particle.set_type(new_type)
+    colours[box.get_particle_no(particle.get_name())] = new_type
+
+    # v_mag = get_magnitude(curr_vx, curr_vy, curr_vz)
+    new_vx, new_vy, new_vz = create_random_spherical_vel(v_mag)
+    particle.set_velocity(new_vx, new_vy, new_vz)
+
+    if new_type == 3:
         particle.set_t(particle.get_t() + t_anharmonic)
 
         if min(t_anharmonic_LLT, t_anharmonic_LTT) == t_anharmonic_LLT:

@@ -314,7 +314,7 @@ class Particle:
         """
         print(self.name + "at (" + str(self.x) + ", " + str(self.y) + ", " + str(self.z) + ")"
               + " with speed: (" + str(self.vx) + ", " + str(self.vy) + ", " +str(self.vz) +
-              ") and frequency %f" % self.freq)
+              ") and frequency %f" % (self.freq / 1e9))
 
     def remove(self):
         self.removed = True
