@@ -104,15 +104,9 @@ def anharmonic_final_step(particle, box, t, colours, points, vx=0, vy=0, vz=0, n
     """
     print("###### Post Anharmonic Energy: %f, 2 * Energy Gap: %f" % (particle.get_energy()*1e19, 2 * ENERGY_GAP*1e19))
 
-    if particle.get_energy() < 2 * ENERGY_GAP and not new_particle:
-        print(box.particles)
-        try:
+    if particle.get_energy() < 2 * ENERGY_GAP:
+        if not new_particle:
             remove_particle(particle, box, points)
-        except KeyError:
-            os._exit(1)
-        return
-
-    if particle.get_energy() < 2 * ENERGY_GAP and new_particle:
         return
 
     if vx or vy or vz:

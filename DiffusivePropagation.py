@@ -10,7 +10,7 @@ import numpy as np
 
 
 def check_diffusive_prop(particle, box, t_isotopic, t_anharmonic, t_boundary, isotopic_rate, anharmonic_rate,
-                   sigma_tolerance=4, time_tolerance=100.0, isotopic_anharmonic_tolerance=100.0):
+                   sigma_tolerance=3, time_tolerance=100.0, isotopic_anharmonic_tolerance=100.0):
 
     type = particle.get_type()
 
@@ -83,7 +83,7 @@ def diffusive_propagation(particle, box, sigma, t_anharmonic, t_isotopic,
 
     # Simulate random change of particle type
     # Pick new phonon type at random and choose velocity
-    new_type = (np.random.choice(3, 1, p=[1/3.0, 1/3.0, 1/3.0]) + 1)[0]
+    new_type = 3 #(np.random.choice(3, 1, p=[1/3.0, 1/3.0, 1/3.0]) + 1)[0]
     v_mag = box.get_material().get_particle_velocity(new_type)
 
     particle.set_type(new_type)

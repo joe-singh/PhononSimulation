@@ -95,9 +95,12 @@ def simulate_step(frames, box, points, colours, title, out_file, coverage_ratio)
                                                      t_isotopic, t_anharmonic_total, t_boundary,
                                                      isotopic_rate, anharmonic_total_rate)
 
-    do_diffuse_scatter = False
+    #do_diffuse_scatter = False
 
     if do_diffuse_scatter:
+        t_anharmonic_total *= 3
+        t_anharmonic_LLT *= 3
+        t_anharmonic_LTT *= 3
         diffusive_propagation(particle, box, sigma, t_anharmonic_total, t_isotopic,
                               t_anharmonic_LTT, t_anharmonic_LLT,
                               points, colours)
@@ -210,7 +213,6 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
 
         random_vx, random_vy, random_vz = create_random_spherical_vel(velocity)
         random_freq = np.random.uniform(LOWER_BOUND_FREQ, UPPER_BOUND_FREQ)
-        random_freq = 70e9
 
         ptcle = Particle(random_x, random_y, random_z, random_vx, random_vy, random_vz,
                          "Particle " + str(i), rand_type, random_freq)
@@ -241,10 +243,10 @@ def run(num_particles, box_width, box_height, box_depth, coverage_ratio, num_ste
     title = ax.set_title('3D Test')
     ani = animation.FuncAnimation(fig, simulate_step, frames=np.arange(0, num_steps),
                                   fargs=(box, points, colour_dict, title, outf, coverage_ratio),
-                                  interval=100)
+                                  interval=1000)
 
     plt.grid()
     plt.show()
 
 coverage = float(sys.argv[1])
-run(1, 1e6, 1e6, 1e6, coverage, 4000)
+run(1, 1e2, 1e2, 1e2, coverage, 4000)
